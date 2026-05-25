@@ -19,7 +19,7 @@
 \usepackage{graphicx}
 \usepackage{float}
 
-% ─── Color y cajas de advertencia ─────────────────────────────────────────────
+% ─── Color y cajas ────────────────────────────────────────────────────────────
 \usepackage{xcolor}
 \usepackage{tcolorbox}
 \tcbuselibrary{breakable, skins}
@@ -27,7 +27,7 @@
 % ─── Hipervínculos ────────────────────────────────────────────────────────────
 \usepackage[hidelinks]{hyperref}
 
-% ─── Cajas de calibración / notas ─────────────────────────────────────────────
+% ─── Caja de calibración ──────────────────────────────────────────────────────
 \newtcolorbox{notacal}{
   colback=yellow!10, colframe=orange!60!black,
   fonttitle=\bfseries\small, title=Nota de calibración,
@@ -38,12 +38,13 @@
 \newcommand{\ia}[1]{\textcolor{teal}{\textbf{\{ia\}}~#1}}
 
 % ─── Metadatos ────────────────────────────────────────────────────────────────
-\title{\textbf{Análisis Dinámico del \emph{Thermal Throttling}\\
-       en el Procesamiento Local de Inteligencia Artificial}}
+\title{\textbf{Modelo Dinámico de Estabilidad Térmica y Rendimiento\\
+       en Computadores de Propósito General}}
 
 \author{%
-  % Completa con los nombres e integrantes del equipo
-  David  Alexander Salazar Villa \and Julian David Ramirez Rodriguez \and Juan Andres Gaviria 
+  David Alexander Salazar Villa \and
+  Julian David Ramírez Rodríguez \and
+  Juan Andrés Gaviria
 }
 
 \date{\today}
@@ -55,27 +56,27 @@
 % ─── Responsabilidades ────────────────────────────────────────────────────────
 \noindent\textbf{Responsabilidades del equipo:}
 \begin{itemize}
-  \item \textbf{David  Salazar } — [nose]
-  \item \textbf{Julian Ramirez} — [lol]
-  \item \textbf{Juan Gaviria} — [xd]
+  \item \textbf{David Salazar} --- [completar]
+  \item \textbf{Julian Ramírez} --- [completar]
+  \item \textbf{Juan Gaviria} --- [completar]
 \end{itemize}
 
 % ─── Resumen ──────────────────────────────────────────────────────────────────
 \begin{abstract}
-Se modela la dinámica del \emph{thermal throttling} en procesadores bajo carga
-de inteligencia artificial como un sistema de tres ecuaciones diferenciales no
-lineales acopladas que relacionan temperatura, potencia e inferencia. El término
-de throttling cúbico introduce una no linealidad que impide la solución analítica
-y divide el comportamiento del sistema en dos regímenes: uno de aceleración libre
-y uno de protección térmica. Se implementa el método de Runge-Kutta de cuarto
-orden (RK4) desde cero para integrar el sistema, junto con otros dos métodos de
-referencia, y se realiza un análisis de error variando el tamaño de paso para
-caracterizar la degradación de convergencia inducida por los gradientes extremos
-en la frontera de throttling. Se simulan cuatro escenarios de intervención
----base, \emph{undervolting}, mejora de disipación y cambio de pasta
-térmica--- y se evalúa en cada uno si el sistema converge a un equilibrio estable
-con inferencia viable. Los resultados se animan para ilustrar las trayectorias en
-el espacio de estados.
+Se modela la dinámica del \emph{thermal throttling} en procesadores de
+computadores de propósito general bajo cargas sostenidas como un sistema de
+tres ecuaciones diferenciales no lineales acopladas que relacionan temperatura,
+potencia y throughput efectivo. La función de throttling logística (sigmoide)
+introduce una no linealidad suave pero irreducible que impide la solución
+analítica y divide el comportamiento del sistema en dos regímenes: aceleración
+libre y protección térmica. Se implementan tres métodos numéricos programados
+desde cero ---Euler, Euler Mejorado y Runge-Kutta de cuarto orden (RK4)--- y
+se realiza un análisis comparativo de error variando el tamaño de paso,
+validando contra el solucionador de referencia RK45. Se simulan cuatro
+escenarios de intervención ---base, \emph{undervolting}, mejora de disipación y
+cambio de pasta térmica--- evaluando en cada uno si el sistema converge a un
+equilibrio estable con throughput viable. Los resultados se animan para ilustrar
+las trayectorias en el espacio de estados.
 \end{abstract}
 
 % ══════════════════════════════════════════════════════════════════════════════
@@ -83,114 +84,110 @@ el espacio de estados.
 
 \subsection{Presentación del sistema}
 
-El sistema escogido es la unidad de procesamiento de una computadora (CPU/NPU)
-operando bajo cargas de trabajo generadas por la inferencia de Modelos de
-Lenguaje Grande (LLM). Este sistema es un entorno dinámico donde la potencia
-eléctrica, la temperatura del silicio y la velocidad de procesamiento de la IA
-(medida en \emph{tokens} por segundo) se acoplan. A diferencia de otros sistemas
-mecánicos, las decisiones se toman en microsegundos y de forma no lineal, ya que
-el sistema presenta un comportamiento de dos regímenes: una fase de aceleración
-suave y una fase de desaceleración extrema. Estas fases emergen de la arquitectura
-del hardware, que dispone de un firmware protector que, al alcanzar sus límites
-térmicos, disminuye o corta abruptamente la fuente de energía hacia el procesador
-para evitar daños físicos.
+El sistema de estudio es la unidad de procesamiento central (CPU) de un
+computador de propósito general operando bajo cargas de trabajo sostenidas de
+alto rendimiento. En la arquitectura de Von Neumann, el procesador enfrenta una
+tensión permanente entre tres fuerzas en competencia: el planificador del sistema
+operativo, que inyecta potencia para maximizar el throughput efectivo; la
+generación de calor por efecto Joule, proporcional a esa potencia; y los
+mecanismos de protección del firmware, que reducen la energía para prevenir el
+daño físico irreversible del silicio.
+
+Esta interacción produce una retroalimentación altamente no lineal. Cuando el
+SO sube la potencia, la temperatura sube; cuando la temperatura supera un umbral
+crítico, el firmware interviene recortando la potencia; al caer la potencia, el
+throughput cae por debajo del objetivo y el SO vuelve a demandar más energía.
+Dependiendo de los parámetros físicos del hardware, este ciclo puede converger
+a un equilibrio estable o mantenerse como una oscilación incontrolable.
 
 \subsection{Relevancia}
 
-Con los estándares actuales de hardware para IA local (requisito industrial de
-$>40$~TOPS), un equipo ejecutando un LLM está siempre en tensión física gracias
-a tres fuerzas en competencia:
+El fenómeno es transversal a cualquier computador de propósito general sometido
+a carga sostenida: servidores de cómputo científico, estaciones de trabajo de
+renderizado, equipos de procesamiento de datos en tiempo real. El modelo permite
+predecir analíticamente si un conjunto de parámetros de hardware produce un
+sistema estable o inestable, con aplicación directa en el diseño de políticas de
+refrigeración y selección de componentes.
 
 \begin{itemize}
   \item El sistema operativo busca maximizar la productividad asignando la mayor
-        potencia posible para generar \emph{tokens} con baja latencia.
+        potencia posible para maximizar el throughput.
   \item El procesador, por efecto Joule, incrementa su temperatura de forma
         proporcional a esa carga de trabajo.
-  \item El firmware interviene como mecanismo de seguridad recortando la energía
-        de forma drástica para prevenir daños irreversibles en la arquitectura del chip.
+  \item El firmware reduce la energía de forma progresiva y agresiva para
+        prevenir daños irreversibles en la arquitectura del chip.
 \end{itemize}
-
-Definir un equilibrio entre estas tres fuerzas asegura la viabilidad operativa
-de cualquier equipo dedicado a la inteligencia artificial.
 
 \subsection{Fenómeno de estudio}
 
-El \emph{thermal throttling} es el fenómeno central. En términos de sistemas se
-define como una penalización impuesta por el hardware para desacelerar el flujo de
-datos y reducir la generación de calor. En el contexto de la IA, este fenómeno
-genera oscilaciones severas: cuando el equipo entra en throttling, el rendimiento
-se desploma por debajo de los umbrales mínimos de usabilidad (frecuentemente por
-debajo de 5~tokens/s), para luego intentar recuperarse una vez la temperatura
-desciende, creando un ciclo de inestabilidad que compromete la integridad del
-procesamiento. Modelar este fenómeno permite predecir el ``punto de fatiga'' del
-hardware y diseñar intervenciones que optimicen la longevidad del equipo sin
-sacrificar su capacidad de cómputo.
+El \emph{thermal throttling} es el fenómeno central. El firmware no actúa como
+un interruptor binario: implementa el Escalado Dinámico de Frecuencia y Voltaje
+(DVFS) ---Intel P-States, AMD Precision Boost--- reduciendo la frecuencia de
+forma progresiva y acelerada a medida que la temperatura se aproxima al umbral
+crítico. Esto genera oscilaciones severas en cargas sostenidas: cuando el equipo
+entra en throttling profundo, el throughput se desploma, y al recuperarse la
+temperatura el ciclo reinicia, comprometiendo la integridad del procesamiento.
 
 \subsubsection{Por qué no existe solución analítica}
 
 El sistema \textbf{no admite solución analítica exacta} por dos razones
-complementarias:
+complementarias.
 
-El firmware actúa como un interruptor condicional que solo se activa cuando la
-temperatura sobrepasa un límite crítico, dividiendo el espacio de estados en dos
-regímenes con dinámicas cualitativamente distintas: un \emph{régimen libre}, donde
-el sistema opera según las demandas de rendimiento, y un \emph{régimen de
-protección}, donde se introducen fuerzas de frenado para preservar el silicio.
-El término de throttling se representa como $\max(0, T - T_{\text{crit}})^3$,
-ya que el firmware no realiza ninguna acción sino hasta que la temperatura supera
-el umbral crítico.
+La primera es \textbf{estructural}: la función de throttling logístico introduce
+una no linealidad irreducible en la ecuación de control de potencia. No existe
+transformación de variables conocida que linealice simultáneamente los tres
+estados acoplados.
 
-El obstáculo matemático fundamental es que el instante exacto en el que ocurre
-este cambio, $t^*$ tal que $T(t^*) = T_{\text{crit}}$, es una variable desconocida
-que depende exclusivamente de la trayectoria previa del sistema. Al no poder
-predecir cuándo ni cuántas veces el sistema alternará entre estados, es imposible
-formular una expresión analítica que unifique ambos regímenes. Además, el calor
-generado, la energía consumida y el rendimiento computacional están fuertemente
-acoplados: la alteración de una variable afecta instantáneamente a las demás, lo
-que impide desacoplar las ecuaciones para encontrar una solución general.
+La segunda es \textbf{analítica}: las tres ecuaciones están doblemente acopladas
+---$P$ aparece como término fuente en $\dot{T}$ y en $\dot{R}$; $R$ aparece en
+$\dot{P}$; $T$ aparece en $\dot{P}$ a través de la función logística---. Este
+acoplamiento circular impide integrar una ecuación de forma independiente y
+sustituir su resultado en las demás.
+
+Por tanto, el uso de métodos numéricos no es una simplificación del problema
+sino la \textbf{única metodología válida} para estudiar el comportamiento
+completo del sistema.
 
 \subsection{Objetivos}
 
 El objetivo principal es modelar matemáticamente y simular mediante métodos
-numéricos la dinámica térmica y de rendimiento de un procesador bajo carga de IA,
-identificando las condiciones bajo las cuales el sistema alcanza un estado de
-equilibrio estable.
+numéricos la dinámica térmica y de rendimiento de un procesador bajo carga
+sostenida, identificando las condiciones bajo las cuales el sistema alcanza
+un estado de equilibrio estable.
 
-Como objetivos específicos, se busca: implementar un algoritmo RK4 programado
-desde cero; realizar un análisis comparativo de convergencia y error variando el
-tamaño de paso $h$ y validando contra un solucionador de alto orden; y animar las
-trayectorias resultantes para interpretar visualmente la sensibilidad del hardware
-ante diferentes parámetros de refrigeración y configuración de software.
+Objetivos específicos: implementar Euler, Euler Mejorado y RK4 programados
+desde cero para un sistema vectorial de tres estados; realizar un análisis
+comparativo de convergencia y error variando $h$ validando contra RK45; simular
+cuatro escenarios de intervención; y producir animaciones de las trayectorias
+en el espacio de estados.
 
 \subsection{Estructura del informe}
 
-La \textbf{Sección~\ref{sec:metodologia}} desglosa el modelo matemático y justifica
-las constantes físicas. La \textbf{Sección~\ref{sec:numerica}} describe la
-metodología numérica, validación y herramientas. La
-\textbf{Sección~\ref{sec:resultados}} presenta las simulaciones de los cuatro
-escenarios de intervención junto al análisis de error. La
-\textbf{Sección~\ref{sec:conclusiones}} sintetiza los hallazgos y reflexiona sobre
-el trabajo en equipo.
+La \textbf{Sección~\ref{sec:metodologia}} desglosa el modelo matemático y
+justifica las constantes físicas. La \textbf{Sección~\ref{sec:numerica}}
+describe la metodología numérica, validación y herramientas. La
+\textbf{Sección~\ref{sec:resultados}} presenta el análisis de equilibrio,
+escenarios y análisis de error. La \textbf{Sección~\ref{sec:conclusiones}}
+sintetiza los hallazgos.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Metodología}
 \label{sec:metodologia}
 
-\subsection{Modelo matemático: sistema de ecuaciones diferenciales}
+\subsection{Modelo matemático}
 
-El fenómeno se modela como un sistema de tres ecuaciones diferenciales no lineales
-de primer orden acopladas. Las tres variables de estado son:
+El fenómeno se modela como un sistema de tres EDOs no lineales acopladas de
+primer orden. Las variables de estado son:
 
 \begin{itemize}
-  \item $T(t)$: temperatura del procesador en el instante $t$ [\textdegree C]
-  \item $P(t)$: potencia eléctrica asignada al procesador [W]
-  \item $I(t)$: velocidad de inferencia (tokens generados por segundo) [tokens/s]
+  \item $T(t)$: temperatura del procesador [\textdegree C]
+  \item $P(t)$: potencia eléctrica asignada [W]
+  \item $R(t)$: throughput efectivo (operaciones por segundo) [ops/s]
 \end{itemize}
 
-Las tres están acopladas: la potencia determina cuánto se calienta el procesador y
-cuán rápido procesa; la temperatura activa el throttling que recorta la potencia;
-la potencia recortada reduce la inferencia, lo que impulsa al sistema operativo a
-demandar más potencia.
+Las tres están acopladas: $P$ determina cuánto se calienta el procesador y
+cuán rápido procesa; $T$ activa el throttling que recorta $P$; la caída de
+$P$ reduce $R$, lo que impulsa al SO a demandar más $P$.
 
 % ─── Ecuación 1 ───────────────────────────────────────────────────────────────
 \subsubsection*{Ecuación 1: Dinámica Térmica}
@@ -200,155 +197,131 @@ demandar más potencia.
   \label{eq:termica}
 \end{equation}
 
-Esta ecuación describe la \textbf{evolución de la temperatura del procesador}.
-Es una aplicación directa del Modelo de Capacitancia Térmica Concentrada
-(\emph{Lumped Capacitance Model}), donde el procesador se trata como un nodo único
-con una masa térmica $C_{\text{th}}$ y una resistencia térmica $R_{\text{th}}$
-hacia el ambiente. El balance de energía canónico es
-$C_{\text{th}} \frac{dT}{dt} = \dot{E}_{\text{in}} - \dot{E}_{\text{out}}$,
-donde la energía entrante es la potencia eléctrica disipada como calor (Efecto
-Joule) y la saliente sigue la Ley de Enfriamiento de Newton. Dividiendo entre
-$C_{\text{th}}$ se obtiene la forma exacta de la ecuación, con
+Aplicación directa del Modelo de Capacitancia Térmica Concentrada
+(\emph{Lumped Capacitance Model}): el procesador se trata como un nodo único
+con masa térmica $C_{\text{th}}$ y resistencia térmica $R_{\text{th}}$ hacia
+el ambiente. El balance energético canónico
+$C_{\text{th}} \frac{dT}{dt} = \dot{E}_{\text{in}} - \dot{E}_{\text{out}}$
+---energía entrante por Efecto Joule, saliente por Ley de Newton--- dividido
+entre $C_{\text{th}}$ produce la forma exacta, con
 $k_1 \equiv 1/C_{\text{th}}$ y $k_2 \equiv 1/(R_{\text{th}} C_{\text{th}})$.
 
-El término $k_1 P(t)$ es la \textbf{tasa de calentamiento}: la potencia consumida
-se disipa parcialmente como calor. La constante $k_1$ [\textdegree C/J] cuantifica
-cuántos grados produce cada julio entregado; depende de la arquitectura del chip
-a través de $\kappa_0$, que agrupa la ineficiencia térmica de la litografía del
-silicio.
+\textbf{Término} $k_1 P(t)$: tasa de calentamiento. $k_1$
+[\textdegree C\,J$^{-1}$] cuantifica cuántos grados produce cada julio;
+depende de la litografía del silicio a través de $\kappa_0$.
 
-El término $-k_2(T - T_{\text{amb}})$ representa la \textbf{disipación térmica}
-hacia el ambiente. La constante $k_2$ [s$^{-1}$] cuantifica la eficiencia del
-sistema de disipación: cuando $T = T_{\text{amb}}$ no hay pérdida neta; cuando
-$T \gg T_{\text{amb}}$ la disipación es máxima. Depende físicamente de
-$\Phi_{\text{aire}}$ y $H_d$.
+\textbf{Término} $-k_2(T - T_{\text{amb}})$: disipación térmica por
+convección. $k_2$ [s$^{-1}$] cuantifica la eficiencia del disipador: nula
+cuando $T = T_{\text{amb}}$, máxima cuando $T \gg T_{\text{amb}}$.
 
 \smallskip
-\noindent\textit{Referencia: Incropera, F.\,P.\ \& DeWitt, D.\,P.\ ---
-\emph{Fundamentos de transferencia de calor y masa}, cap.\ Conducción transitoria.}
+\noindent\textit{Ref.: Incropera \& DeWitt --- \emph{Fundamentos de
+transferencia de calor y masa}, cap.\ Conducción transitoria~\cite{incropera}.}
 
 % ─── Ecuación 2 ───────────────────────────────────────────────────────────────
-\subsubsection*{Ecuación 2: Dinámica de Inferencia}
+\subsubsection*{Ecuación 2: Dinámica de Rendimiento}
 
 \begin{equation}
-  \frac{dI}{dt} = \gamma P(t) - \delta I(t)
-  \label{eq:inferencia}
+  \frac{dR}{dt} = \gamma P(t) - \delta R(t)
+  \label{eq:rendimiento}
 \end{equation}
 
-Esta ecuación describe la \textbf{evolución de la velocidad de inferencia}.
-Su forma proviene de los modelos de fluidos en teoría de colas
-(\emph{Fluid Queueing Model}), cuya ecuación general es
-$\dot{x} = \lambda(t) - \mu x(t)$, donde $\lambda(t)$ es la tasa de inyección
-de trabajo y $\mu x(t)$ la fricción proporcional a la carga actual. La variable
-$I(t)$ actúa como la variable de flujo $x(t)$.
+Su forma proviene del modelo de fluidos en teoría de colas
+(\emph{Fluid Queueing Model}): $\dot{x} = \lambda(t) - \mu x(t)$, donde
+$\lambda(t)$ es la tasa de inyección de trabajo y $\mu x(t)$ la fricción
+proporcional a la carga. $R(t)$ actúa como la variable de flujo $x(t)$.
 
-El término $\gamma P(t)$ representa la \textbf{aceleración computacional}: a mayor
-potencia, mayor frecuencia de operación y mayor \emph{throughput} de cálculo
-matricial, operación central en los LLMs. La constante $\gamma$ mide la eficiencia
-con que la energía se convierte en cómputo útil e incorpora las Instrucciones Por
-Ciclo (IPC) y el número de hilos lógicos disponibles.
+\textbf{Término} $\gamma P(t)$: aceleración computacional. A mayor potencia,
+mayor frecuencia de operación y mayor throughput. $\gamma$ mide la eficiencia
+con que la energía se convierte en operaciones útiles, determinada por el
+paralelismo del hardware (hilos lógicos, frecuencia, IPC efectivo).
 
-El término $-\delta I(t)$ representa la \textbf{fricción computacional}: ningún
-sistema acelera indefinidamente. Al aumentar la velocidad de inferencia, se satura
-el ancho de banda de memoria RAM y los buses de la placa base. La inferencia de
-LLMs es un proceso severamente limitado por el ancho de banda de memoria
-(\emph{memory bound}), por lo que $\delta$ es inversamente proporcional a la
-velocidad del enlace más lento en la ruta de datos.
+\textbf{Término} $-\delta R(t)$: fricción computacional. Al aumentar $R$, se
+saturan los buses de comunicación, controladores de memoria y colas de
+instrucciones. Según el Modelo Roofline, la carga opera en el régimen
+\emph{memory bound}: el cuello de botella es el ancho de banda por el que los
+datos llegan al procesador. $\delta$ [s$^{-1}$] es inversamente proporcional
+al ancho de banda del enlace más lento en la ruta crítica de datos.
 
 \smallskip
-\noindent\textit{Referencia: Kleinrock, L.\ --- \emph{Queueing Systems, Vol.\,II:
-Computer Applications}, cap.\ Fluid Approximations.}
+\noindent\textit{Ref.: Kleinrock --- \emph{Queueing Systems, Vol.\,II},
+cap.\ Fluid Approximations~\cite{kleinrock}; Williams et al.\ ---
+Roofline model~\cite{williams}.}
 
 % ─── Ecuación 3 ───────────────────────────────────────────────────────────────
-\subsubsection*{Ecuación 3: Control de Potencia con Throttling No Lineal}
+\subsubsection*{Ecuación 3: Control de Potencia con Throttling Logístico}
 
 \begin{equation}
-  \frac{dP}{dt} = \alpha\bigl(I_{\text{obj}} - I(t)\bigr)
-                 - \beta \max\!\bigl(0,\, T(t) - T_{\text{crit}}\bigr)^3
+  \frac{dP}{dt} = \alpha\bigl(R_{\text{obj}} - R(t)\bigr)
+                 - \frac{\beta}{1 + e^{-k(T(t) - T_{\text{crit}})}}
   \label{eq:potencia}
 \end{equation}
 
-Esta ecuación es la \textbf{lógica de control de potencia} del sistema operativo y
-el firmware, y contiene el término no lineal que hace al sistema matemáticamente
-irresoluble de forma analítica.
+Esta ecuación es la \textbf{lógica de control de potencia} del SO y el
+firmware, y contiene el término no lineal que hace al sistema irresoluble
+de forma analítica.
 
-El término $\alpha(I_{\text{obj}} - I(t))$ representa la \textbf{demanda del
-sistema operativo}. En la teoría de control automático, corresponde exactamente a
-la acción de un controlador proporcional (componente P de un PID): la ganancia
-$\alpha$ actúa sobre el error $e(t) = I_{\text{obj}} - I(t)$ para ajustar la
-potencia. Un $\alpha$ alto corresponde al perfil ``Máximo rendimiento''; un $\alpha$
-bajo, a ``Ahorro de batería''.
+\textbf{Término} $\alpha(R_{\text{obj}} - R(t))$: demanda del SO. En la
+teoría de control automático corresponde a la acción de un controlador
+proporcional (componente P de un PID): la ganancia $\alpha$ actúa sobre el
+error $e(t) = R_{\text{obj}} - R(t)$ para ajustar la potencia. Un $\alpha$
+alto corresponde al perfil ``Máximo rendimiento''; un $\alpha$ bajo,
+a ``Ahorro de batería''.
 
-El término $-\beta\max(0, T - T_{\text{crit}})^3$ modela el \textbf{throttling del
-firmware}. Mientras $T \leq T_{\text{crit}}$ el término es exactamente cero y el
-firmware no interviene; al superar $T_{\text{crit}}$, crece con la tercera potencia
-del exceso $\Delta T = T - T_{\text{crit}}$.
+\textbf{Término logístico} $-\frac{\beta}{1 + e^{-k(T - T_{\text{crit}})}}$:
+throttling del firmware. Modela el DVFS mediante una función sigmoide
+que produce una transición continua y acelerada alrededor de $T_{\text{crit}}$.
+Su comportamiento en los tres regímenes:
 
-Para verificar que no introduce discontinuidades problemáticas en $T = T_{\text{crit}}$,
-se evalúan los límites laterales de
-$\phi(\Delta T) = \max(0, \Delta T)^3$ y sus dos primeras derivadas en $\Delta T = 0$:
+\begin{itemize}
+  \item $T \ll T_{\text{crit}}$: término $\to 0$. El firmware no interviene.
+  \item $T = T_{\text{crit}}$: término $= \beta/2$. Corte al 50\,\% del máximo.
+  \item $T \gg T_{\text{crit}}$: término $\to \beta$. Corte máximo de potencia.
+\end{itemize}
 
-\begin{equation*}
-  \lim_{\Delta T \to 0^{\pm}} \phi(\Delta T) = 0, \quad
-  \lim_{\Delta T \to 0^{\pm}} \phi'(\Delta T) = 0, \quad
-  \lim_{\Delta T \to 0^{\pm}} \phi''(\Delta T) = 0
-\end{equation*}
+El parámetro $k$ [\textdegree C$^{-1}$] controla la agresividad de la
+transición: $k$ alto produce una curva casi vertical; $k$ bajo, respuesta
+gradual. Se fija durante la calibración de la simulación.
 
-Los tres límites bilaterales coinciden, confirmando que $\phi$ es continua junto
-con sus dos primeras derivadas en el umbral. Para $p = 2$, $\phi'' = 2$ por la
-derecha y $0$ por la izquierda ---una discontinuidad de curvatura que el integrador
-experimentaría como un salto brusco. El exponente $p = 3$ es el mínimo entero que
-elimina esta discontinuidad.
+\medskip
+La elección de la función logística frente a alternativas como
+$\max(0,\Delta T)^p$ se justifica por dos criterios:
 
-La elección del exponente cúbico se justifica por tres razones técnicas:
+\smallskip\noindent\textbf{1. Realismo físico --- DVFS.}
+Los procesadores modernos (Intel P-States, AMD Precision Boost) reducen la
+frecuencia de forma progresiva a medida que la temperatura se aproxima al
+límite, sin esperar a superarlo. Brooks y Martonosi~\cite{brooks} documentan
+que estos mecanismos imponen caídas de rendimiento asimétricas cuya severidad
+aumenta de forma no lineal. La sigmoide modela esta transición continua con
+mayor fidelidad que una función que permanece en cero hasta $T_{\text{crit}}$
+y luego actúa de golpe.
 
-\smallskip\noindent\textbf{1. Comportamiento físico del hardware.}
-La documentación técnica de Intel establece que las acciones ante una condición
-térmica crítica escalan según la severidad del evento, desde reducir el ancho de
-banda y la frecuencia hasta apagar subsistemas completos. Brooks y Martonosi, en
-\emph{Dynamic Thermal Management for High-Performance Microprocessors}, documentan
-que mecanismos como el \emph{clock gating} global o la reducción dinámica de
-voltaje (DVFS) imponen caídas de rendimiento asimétricas cuya severidad aumenta
-polinómicamente frente a la magnitud de la violación térmica. La curva cúbica
-abstrae esa cascada: tolerante a micro-fluctuaciones en la frontera, pero
-implacable ante excesos sostenidos.
+\smallskip\noindent\textbf{2. Diferenciabilidad $C^\infty$.}
+La función logística es infinitamente diferenciable en todo $\mathbb{R}$: no
+presenta discontinuidades en ninguna derivada en ningún punto, incluyendo la
+vecindad de $T_{\text{crit}}$. Esto garantiza que RK4, al evaluar sus cuatro
+pendientes en $[t_n, t_{n+1}]$, nunca encuentre un cambio brusco de curvatura.
+El orden de convergencia del método se mantiene globalmente, no solo por tramos.
+Nocedal y Wright~\cite{nocedal} establecen que la diferenciabilidad continua
+de orden superior es la condición que preserva el orden local de los métodos
+de integración explícitos.
 
-\smallskip\noindent\textbf{2. Continuidad geométrica en el cruce de régimen.}
-Nocedal y Wright, en \emph{Numerical Optimization}, establecen que exponentes
-superiores al cuadrático se justifican cuando el método numérico requiere derivadas
-continuas de orden mayor para no degradar su convergencia local. RK4 construye su
-aproximación interpolando pendientes en puntos intermedios del intervalo
-$[t_n, t_{n+1}]$; si la curvatura cambia abruptamente en $T_{\text{crit}}$, la
-extrapolación interna introduce un error de truncamiento local que contamina la
-solución en esa vecindad.
-
-\smallskip\noindent\textbf{3. Coherencia con la teoría de penalización exterior.}
-Rao, en \emph{Engineering Optimization: Theory and Practice}, explicita que aunque
-$p = 2$ es el valor habitual por simplicidad analítica, el uso de $p = 3$ o
-$p = 4$ es completamente legítimo cuando la estabilidad del método numérico exige
-evitar discontinuidades de curvatura en el límite de la restricción. Adoptar
-$p = 3$ produce además una fuerza restauradora más agresiva ante violaciones
-grandes, sin necesidad de inflar artificialmente $\beta$.
-
-La constante $\beta$ [W\,s$^{-1}$\,\textdegree C$^{-3}$] cuantifica el nivel de
-severidad del firmware ante el calor. Un fabricante conservador usará un $\beta$
-alto; uno orientado al rendimiento, un $\beta$ bajo.
+La constante $\beta$ [W] acota la potencia máxima de corte del firmware. Un
+fabricante conservador usará $\beta$ alto; uno orientado al rendimiento, $\beta$
+bajo.
 
 \smallskip
-\noindent\textit{Referencias: Ogata, K.\ --- \emph{Ingeniería de control moderna};
-Ames et al.\ --- \emph{Control Barrier Functions: Theory and Applications};
-Nocedal \& Wright --- \emph{Numerical Optimization}; Rao --- \emph{Engineering
-Optimization}; Brooks \& Martonosi --- \emph{Dynamic Thermal Management for
-High-Performance Microprocessors}.}
+\noindent\textit{Refs.: Ogata~\cite{ogata}; Ames et al.~\cite{ames};
+Nocedal \& Wright~\cite{nocedal}; Brooks \& Martonosi~\cite{brooks}.}
 
 % ─── Constantes ───────────────────────────────────────────────────────────────
 \subsection{Definición de constantes}
 
-Para que el modelo refleje la realidad del hardware y permita simular
-intervenciones físicas, las seis constantes de las ecuaciones se derivan
-agrupando especificaciones tangibles de los componentes.
-
 \subsubsection{Variables base de hardware}
+
+Todas son fijas al adquirir el hardware. Los únicos parámetros intervenibles
+entre escenarios son $\Phi_{\text{aire}}$ (base refrigerante o limpieza)
+y $H_d$ (cambio de pasta térmica).
 
 \begin{table}[H]
 \centering
@@ -359,95 +332,87 @@ agrupando especificaciones tangibles de los componentes.
 \toprule
 Símbolo & Unidad & Descripción \\
 \midrule
-$N_c$            & ---    & Núcleos físicos del procesador \\
-$N_h$            & ---    & Hilos lógicos (\emph{threads}) \\
-$f_p$            & GHz    & Frecuencia de reloj \\
-$C_p$            & MB     & Caché del procesador \\
-$v_{\text{ram}}$ & MT/s   & Velocidad de la RAM \\
-$M_{\text{ram}}$ & GB     & Capacidad total de RAM \\
-$v_{\text{alm}}$ & MB/s   & Velocidad de almacenamiento (NVMe) \\
-$\Phi_{\text{aire}}$ & CFM & Flujo de aire de los ventiladores \\
-$H_d$            & W/\textdegree C & Conductancia térmica del disipador \\
-$v_{\text{bus}}$ & GT/s   & Velocidad del bus PCIe \\
+$N_c$                    & ---             & Núcleos físicos \\
+$N_h$                    & ---             & Hilos lógicos (\emph{threads}) \\
+$f_p$                    & GHz             & Frecuencia de reloj \\
+$v_{\text{ram}}$         & MT/s            & Velocidad de la RAM \\
+$v_{\text{bus}}$         & GT/s            & Velocidad del bus PCIe \\
+$\Phi_{\text{aire}}$     & CFM             & Flujo de aire de ventiladores \\
+$H_d$                    & W/\textdegree C & Conductancia del disipador \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsubsection{Factores de escala empíricos}
 
-Cada constante global se expresa como el producto de un \textbf{factor de escala
-empírico} (subíndice $0$) y una combinación de variables de hardware. Los factores
-de escala agrupan fenómenos microscópicos no modelados individualmente (resistencia
-del silicio, geometría del chasis, \emph{overhead} del kernel, etc.) y ajustan las
-unidades para garantizar la consistencia dimensional del modelo.
+Cada constante global se expresa como el producto de un \textbf{factor de
+escala empírico} (subíndice $0$) y una combinación de variables de hardware.
+Los factores agrupan fenómenos microscópicos no modelados individualmente
+(resistencia del silicio, geometría del chasis, \emph{overhead} del kernel)
+y ajustan las unidades para garantizar la consistencia dimensional.
 
-\medskip
-\noindent\textbf{Dinámica Térmica:}
+\medskip\noindent\textbf{Dinámica Térmica:}
 
 \begin{itemize}
-  \item $k_1 = \kappa_0 \cdot (f_p \cdot N_c)$ [\textdegree C\,s$^{-1}$\,W$^{-1}$].
+  \item $k_1 = \kappa_0 \cdot (f_p \cdot N_c)$
+        [\textdegree C\,s$^{-1}$\,W$^{-1}$].
         A mayor frecuencia y más núcleos activos, más transistores conmutan
-        simultáneamente y mayor disipación de energía como calor (Efecto Joule).
-        El factor $\kappa_0$ captura la resistencia térmica específica del proceso
-        litográfico del silicio (5\,nm, 7\,nm, etc.) y qué fracción de la energía
-        se convierte en calor. Equivale a $1/C_{\text{th}}$ del modelo de
-        Incropera: $k_1 \equiv 1/C_{\text{th}}$.
+        y mayor es la disipación de energía como calor (Efecto Joule).
+        $\kappa_0$ captura la resistencia térmica de la litografía del
+        silicio; equivale a $1/C_{\text{th}}$: $k_1 \equiv 1/C_{\text{th}}$.
 
   \item $k_2 = \eta_0 \cdot (\Phi_{\text{aire}} \cdot H_d)$ [s$^{-1}$].
-        La capacidad de enfriamiento depende del flujo de aire
-        $\Phi_{\text{aire}}$ [CFM] y la conductancia térmica del disipador $H_d$
-        [W/\textdegree C]: mayor flujo y mejor disipador producen un $k_2$ más alto.
-        El factor $\eta_0$ corrige la geometría real del chasis (obstrucciones en
-        las rejillas, flujo no laminar, presión ambiental) y garantiza la
-        consistencia dimensional. Equivale a $1/(R_{\text{th}} C_{\text{th}})$.
+        La capacidad de enfriamiento depende del flujo de aire y la
+        conductancia del disipador. $\eta_0$ corrige la geometría real del
+        chasis (obstrucciones, flujo no laminar, presión ambiental);
+        equivale a $1/(R_{\text{th}} C_{\text{th}})$.
 \end{itemize}
 
-\noindent\textbf{Dinámica de Inferencia:}
+\noindent\textbf{Dinámica de Rendimiento:}
 
 \begin{itemize}
-  \item $\gamma = \gamma_0 \cdot (N_h \cdot f_p)$ [tokens\,s$^{-2}$\,W$^{-1}$].
-        Basado en la Ley de Hierro del Rendimiento (\emph{Iron Law}), el
-        \emph{throughput} bruto de cómputo es proporcional al número de hilos
-        lógicos y a la frecuencia del reloj. El factor $\gamma_0$ representa las
-        Instrucciones Por Ciclo (IPC) específicas para cálculo matricial,
-        tipicamente acelerado por la NPU.
+  \item $\gamma = \gamma_0 \cdot (N_h \cdot f_p)$
+        [ops\,s$^{-2}$\,W$^{-1}$].
+        Basado en la \emph{Iron Law}: el throughput bruto es proporcional
+        a hilos lógicos y frecuencia de reloj. $\gamma_0$ representa el
+        IPC efectivo de la arquitectura para la carga de trabajo estudiada.
 
   \item $\delta = \delta_0 \,/\, \min(v_{\text{ram}},\, v_{\text{bus}})$
-        [s$^{-1}$]. Según el Modelo Roofline, la generación de \emph{tokens} en
-        LLMs opera en el régimen \emph{memory bound}: el cuello de botella real es
-        el ancho de banda por el que los pesos del modelo llegan al procesador.
-        El decaimiento del rendimiento es inversamente proporcional a la velocidad
-        del enlace más lento, ya sea la RAM (MT/s) o el bus PCIe (GT/s). El factor
-        $\delta_0$ cuantifica el \emph{overhead} intrínseco del sistema operativo.
+        [s$^{-1}$].
+        Modelo Roofline (\emph{memory bound}): el cuello de botella es el
+        ancho de banda del enlace más lento, ya sea la RAM (MT/s) o el bus
+        PCIe (GT/s). $\delta_0$ cuantifica el \emph{overhead} intrínseco
+        del sistema operativo.
 \end{itemize}
 
 \noindent\textbf{Control de Potencia:}
 
 \begin{itemize}
   \item $\alpha = \alpha_0 \cdot N_h/N_c$
-        [W\,s$^{-1}$\,(token\,s$^{-1}$)$^{-1}$]. La ratio $N_h/N_c$ es el
-        índice de \emph{hyperthreading}: un procesador con HT activo expone más
-        capacidad lógica al SO, induciendo al gobernador de energía a ser más
-        agresivo. El factor $\alpha_0$ representa la sensibilidad del perfil
-        energético: alto en ``Máximo rendimiento'', bajo en ``Ahorro de batería''.
+        [W\,s$^{-1}$\,(ops\,s$^{-1}$)$^{-1}$].
+        La ratio $N_h/N_c$ (índice de \emph{hyperthreading}) escala la
+        agresividad del gobernador de energía. $\alpha_0$ representa la
+        sensibilidad del perfil energético seleccionado.
 
-  \item $\beta = \beta_0 \cdot f_p$
-        [W\,s$^{-1}$\,\textdegree C$^{-3}$]. Los procesadores a mayor frecuencia
-        son más vulnerables al daño por migración de electrones, por lo que el
-        firmware escala su respuesta de corte con $f_p$. El factor $\beta_0$
-        captura la filosofía de protección del fabricante: valores altos,
-        fabricantes conservadores; valores bajos, orientados al rendimiento.
+  \item $\beta$ [W].
+        Amplitud máxima del corte de potencia del firmware. No depende de
+        variables de hardware individuales; refleja la política del
+        fabricante: alto para diseños conservadores, bajo para orientados
+        al rendimiento.
+
+  \item $k$ [\textdegree C$^{-1}$].
+        Agresividad de la transición logística. Se fija durante la
+        calibración empírica del comportamiento DVFS del procesador.
 \end{itemize}
 
 % ─── Análisis dimensional ─────────────────────────────────────────────────────
 \subsection{Análisis dimensional}
 
-Para garantizar la viabilidad de la integración numérica, el modelo debe ser
-dimensionalmente homogéneo. Las unidades de las variables de estado son:
-$T(t)$ [\textdegree C], $I(t)$ [tokens/s], $P(t)$ [W].
+Las unidades de las variables de estado son:
+$T(t)$ [\textdegree C], $R(t)$ [ops/s], $P(t)$ [W].
 
-\medskip
-\noindent\textbf{Ecuación térmica} ($dT/dt$ debe resultar en \textdegree C/s):
+\medskip\noindent\textbf{Ecuación térmica}
+($dT/dt$ en \textdegree C\,s$^{-1}$):
 \[
 \underbrace{k_1}_{\left[\frac{^\circ\text{C}}{\text{W\,s}}\right]}
 \underbrace{P}_{\left[\text{W}\right]}
@@ -457,154 +422,167 @@ $T(t)$ [\textdegree C], $I(t)$ [tokens/s], $P(t)$ [W].
 = \left[\frac{^\circ\text{C}}{\text{s}}\right]
 \]
 
-\noindent\textbf{Ecuación de inferencia} ($dI/dt$ en tokens/s$^2$):
+\noindent\textbf{Ecuación de rendimiento}
+($dR/dt$ en ops\,s$^{-2}$):
 \[
-\underbrace{\gamma}_{\left[\frac{\text{tokens}}{\text{W\,s}^2}\right]}
+\underbrace{\gamma}_{\left[\frac{\text{ops}}{\text{W\,s}^2}\right]}
 \underbrace{P}_{\left[\text{W}\right]}
-= \left[\frac{\text{tokens}}{\text{s}^2}\right], \qquad
+= \left[\frac{\text{ops}}{\text{s}^2}\right], \qquad
 \underbrace{\delta}_{\left[\text{s}^{-1}\right]}
-\underbrace{I}_{\left[\frac{\text{tokens}}{\text{s}}\right]}
-= \left[\frac{\text{tokens}}{\text{s}^2}\right]
+\underbrace{R}_{\left[\frac{\text{ops}}{\text{s}}\right]}
+= \left[\frac{\text{ops}}{\text{s}^2}\right]
 \]
 
-\noindent\textbf{Ecuación de potencia} ($dP/dt$ en W/s):
+\noindent\textbf{Ecuación de potencia} ($dP/dt$ en W\,s$^{-1}$):
 \[
-\underbrace{\alpha}_{\left[\frac{\text{W}}{\text{tokens}}\right]}
-\underbrace{(I_{\text{obj}}-I)}_{\left[\frac{\text{tokens}}{\text{s}}\right]}
-= \left[\frac{\text{W}}{\text{s}}\right], \qquad
-\underbrace{\beta}_{\left[\frac{\text{W}}{\text{s}\cdot^\circ\text{C}^3}\right]}
-\underbrace{\Delta T^3}_{\left[^\circ\text{C}^3\right]}
+\underbrace{\alpha}_{\left[\frac{\text{W\,s}^{-1}}{\text{ops\,s}^{-1}}\right]}
+\underbrace{(R_{\text{obj}}-R)}_{\left[\frac{\text{ops}}{\text{s}}\right]}
 = \left[\frac{\text{W}}{\text{s}}\right]
+\]
+\[
+\frac{
+  \underbrace{\beta}_{\left[\text{W}\right]}
+}{
+  1 + e^{
+    -\underbrace{k}_{\left[^\circ\text{C}^{-1}\right]}
+    \underbrace{(T-T_{\text{crit}})}_{\left[^\circ\text{C}\right]}
+  }
+}
+= \left[\text{W}\right]
+\;\Rightarrow\;
+\frac{d}{dt}(\cdots) = \left[\frac{\text{W}}{\text{s}}\right] \checkmark
 \]
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Metodología Numérica}
 \label{sec:numerica}
 
-\subsection{Implementación de RK4}
+\subsection{Implementación de los tres métodos}
 
-Para resolver el sistema vectorial $\dot{\mathbf{x}} = \mathbf{f}(\mathbf{x}, t)$
-con $\mathbf{x} = (T, I, P)^\top$, se implementa RK4 desde cero:
+El sistema vectorial $\dot{\mathbf{x}} = \mathbf{f}(\mathbf{x})$ con
+$\mathbf{x} = (T, R, P)^\top$ se resuelve con tres métodos programados
+desde cero.
 
-\begin{align*}
-  \mathbf{k}_1 &= \mathbf{f}(\mathbf{x}_n, t_n) \\
-  \mathbf{k}_2 &= \mathbf{f}\!\left(\mathbf{x}_n + \tfrac{h}{2}\mathbf{k}_1,\;
-                                    t_n + \tfrac{h}{2}\right) \\
-  \mathbf{k}_3 &= \mathbf{f}\!\left(\mathbf{x}_n + \tfrac{h}{2}\mathbf{k}_2,\;
-                                    t_n + \tfrac{h}{2}\right) \\
-  \mathbf{k}_4 &= \mathbf{f}(\mathbf{x}_n + h\,\mathbf{k}_3,\; t_n + h) \\[4pt]
+\medskip\noindent\textbf{Euler explícito:}
+\begin{equation}
+  \mathbf{x}_{n+1} = \mathbf{x}_n + h\,\mathbf{f}(\mathbf{x}_n)
+\end{equation}
+
+\noindent\textbf{Euler Mejorado (Heun):}
+\begin{align}
+  \mathbf{x}^* &= \mathbf{x}_n + h\,\mathbf{f}(\mathbf{x}_n) \notag \\
   \mathbf{x}_{n+1} &= \mathbf{x}_n
-    + \frac{h}{6}(\mathbf{k}_1 + 2\mathbf{k}_2 + 2\mathbf{k}_3 + \mathbf{k}_4)
+    + \frac{h}{2}\bigl(\mathbf{f}(\mathbf{x}_n) + \mathbf{f}(\mathbf{x}^*)\bigr)
+\end{align}
+
+\noindent\textbf{Runge-Kutta de cuarto orden (RK4):}
+\begin{align*}
+  \mathbf{k}_1 &= \mathbf{f}(\mathbf{x}_n) \\
+  \mathbf{k}_2 &= \mathbf{f}\!\left(\mathbf{x}_n + \tfrac{h}{2}\mathbf{k}_1\right) \\
+  \mathbf{k}_3 &= \mathbf{f}\!\left(\mathbf{x}_n + \tfrac{h}{2}\mathbf{k}_2\right) \\
+  \mathbf{k}_4 &= \mathbf{f}(\mathbf{x}_n + h\,\mathbf{k}_3)
 \end{align*}
+\begin{equation}
+  \mathbf{x}_{n+1} = \mathbf{x}_n
+    + \frac{h}{6}(\mathbf{k}_1 + 2\mathbf{k}_2 + 2\mathbf{k}_3 + \mathbf{k}_4)
+  \label{eq:rk4}
+\end{equation}
 
 \noindent\textbf{Condición de frontera programática sobre $P(t)$.}
-La ODE permite teóricamente que $P(t)$ sea negativa bajo throttling severo, lo cual
-carece de sentido físico (el procesador siempre consume una potencia mínima de
-inactividad $P_{\min}$). Al finalizar cada paso de integración se aplica la
-corrección:
+La ODE permite teóricamente que $P(t)$ sea negativa bajo throttling máximo
+sostenido, lo que carece de sentido físico. Al finalizar cada paso de
+integración se aplica la corrección:
 \begin{equation}
-  P_{n+1} \leftarrow \max\!\bigl(P_{\min},\; P_{n+1}\bigr), \quad P_{\min} = 5\;\text{W}
+  P_{n+1} \leftarrow \max\!\bigl(P_{\min},\; P_{n+1}\bigr),
+  \quad P_{\min} = 5\;\text{W}
 \end{equation}
-Esta corrección \textbf{no modifica la ODE}; es una regla lógica aplicada en el
-código que descarta resultados matemáticamente válidos pero físicamente imposibles,
-garantizando que el modelo permanezca en un dominio admisible.
+Esta corrección \textbf{no modifica la ODE}; es una regla lógica en el
+código que descarta resultados físicamente imposibles, garantizando que
+el modelo permanezca en un dominio admisible.
 
 \subsection{Inestabilidad inducida por gradientes extremos}
 
-RK4 es un integrador \emph{explícito}: en cada paso calcula cuatro pendientes
-locales y las combina para extrapolar el estado al siguiente instante. Esta
-estrategia funciona bien cuando las pendientes cambian suavemente.
+RK4 es un integrador \emph{explícito}: en cada paso calcula cuatro
+pendientes locales y las combina para extrapolar el estado. Funciona bien
+cuando las pendientes cambian suavemente en $[t_n, t_{n+1}]$.
 
-El problema surge cuando se activa el throttling. El término
-$-\beta\max(0, T - T_{\text{crit}})^3$ genera una derivada respecto a $T$ igual a
-$-3\beta(T - T_{\text{crit}})^2$, que crece con el \emph{cuadrado} del exceso
-térmico: una superación de $10\,\text{\textdegree C}$ produce una pendiente
-pronunciada, y $20\,\text{\textdegree C}$ la cuadruplica. El gradiente
-\textbf{explota en función del estado del sistema}.
+La función logística tiene derivada máxima en $T = T_{\text{crit}}$, donde
+vale $k\beta/4$. Para valores altos de $k$ (transición agresiva), esta
+derivada puede ser grande y el cambio de pendiente dentro del intervalo
+puede ser significativo si $h$ es demasiado grande. En ese caso, RK4
+sobreestima o subestima el corte de potencia, produciendo que $P_{n+1}$
+se aleje del valor real y propague error al siguiente paso.
 
-Cuando $h$ es demasiado grande, RK4 evalúa pendientes en puntos ya dentro de la
-zona de gradiente extremo, sobreestimando masivamente el corte de potencia. Esto
-produce que $P_{n+1}$ caiga a valores absurdos en un solo paso, colapsando $I$ y
-disparando $\dot{P}$ en sentido contrario. El resultado es una oscilación numérica
-divergente que no refleja el comportamiento físico real: es un artefacto del
-integrador, no del sistema.
+La ventaja de la sigmoide frente a otras funciones de penalización es que,
+al ser $C^\infty$, la degradación del orden de convergencia de RK4 es
+gradual y proporcional a $k$ y $h$, no abrupta como ocurriría con una
+función no diferenciable. La solución es reducir $h$ hasta que la función
+logística no cambie sustancialmente dentro de un paso, condición que se
+verifica empíricamente en el análisis de convergencia.
 
 \subsection{Análisis de error y convergencia}
 
-Para cada $h \in \{1.0,\; 0.5,\; 0.1,\; 0.05,\; 0.01,\; 0.005\}$ segundos, se
+Para cada $h \in \{1.0,\; 0.5,\; 0.1,\; 0.05,\; 0.01\}$ segundos, se
 calcula el error relativo global respecto a RK45:
 
 \begin{equation}
   E_{\text{rel}}(h) = \max_{t \in [0, T_{\text{sim}}]}
-  \frac{\|\mathbf{x}_{\text{RK4}}(t;\,h) - \mathbf{x}_{\text{RK45}}(t)\|}
+  \frac{\|\mathbf{x}_{\text{aprox}}(t;\,h) - \mathbf{x}_{\text{RK45}}(t)\|}
        {\|\mathbf{x}_{\text{RK45}}(t)\|}
 \end{equation}
 
-Se espera convergencia de orden 4 en el régimen suave ($E \sim h^4$) y degradación
-del orden en la vecindad de $T = T_{\text{crit}}$. Esta degradación es un resultado
-de análisis legítimo y debe discutirse en el informe.
+Se espera convergencia de orden 1 para Euler ($E \sim h$), orden 2 para
+Euler Mejorado ($E \sim h^2$) y orden 4 para RK4 ($E \sim h^4$). La
+gráfica log-log de $E_{\text{rel}}$ vs $h$ debe mostrar estas pendientes
+características.
 
 \subsection{Validación}
 
-La validación del RK4 implementado se realiza comparando sus soluciones contra
-\texttt{scipy.integrate.solve\_ivp} con método RK45 de paso adaptativo. La
-implementación se considera correcta cuando $E_{\text{rel}}$ disminuye con el orden
-esperado al reducir $h$ en el régimen sin throttling activo ($T < T_{\text{crit}}$).
-Adicionalmente, se verifica que RK4 y RK45 produzcan los mismos puntos de
-equilibrio $(T^*, I^*, P^*)$ y el mismo comportamiento cualitativo en cada uno de
-los cuatro escenarios.
+La validación se realiza comparando contra
+\texttt{scipy.integrate.solve\_ivp} con método RK45 de paso adaptativo.
+La implementación se considera correcta cuando $E_{\text{rel}}$ disminuye
+con el orden esperado al reducir $h$, y cuando los tres métodos producen
+los mismos puntos de equilibrio $(T^*, R^*, P^*)$ y el mismo comportamiento
+cualitativo en cada escenario.
 
 \subsection{Herramientas}
 
-La implementación se desarrolla en Python~3.x con las siguientes bibliotecas:
-\texttt{NumPy} (operaciones vectoriales), \texttt{SciPy} (\texttt{solve\_ivp}/RK45,
-solucionador de referencia), \texttt{Matplotlib} (visualización estática) y
-\texttt{Manim} (animaciones). El código de los métodos numéricos está programado
-directamente por el equipo, sin recurrir a solucionadores externos.
+Implementación en Python~3.x: \texttt{NumPy} (operaciones vectoriales),
+\texttt{SciPy} (\texttt{solve\_ivp}/RK45, referencia), \texttt{Matplotlib}
+(visualización estática) y \texttt{Manim} (animaciones). El código de los
+tres métodos está programado directamente por el equipo.
 
 \subsection{Proceso de programación, simulación y animación}
 
-La implementación sigue un orden secuencial. Primero se define la función vectorial
-$\mathbf{f}(\mathbf{x}, t)$ que agrupa las tres ecuaciones, aplicando la condición
-de frontera sobre $P_{\min}$ al final de cada evaluación. Sobre esta función se
-construye el integrador RK4, que recibe $\mathbf{x}_n$ y $h$ y devuelve
-$\mathbf{x}_{n+1}$ usando la fórmula de cuatro pendientes ponderadas.
+Se define primero la función vectorial $\mathbf{f}(\mathbf{x})$ que agrupa
+las tres ecuaciones, aplicando la condición de frontera sobre $P_{\min}$ al
+final de cada evaluación. Sobre esta función se construyen los tres
+integradores con la misma interfaz, lo que permite intercambiarlos
+directamente en el bucle de simulación.
 
-Una vez verificado RK4 contra RK45 en el escenario base, se implementan los dos
-métodos adicionales requeridos siguiendo la misma interfaz, lo que permite
-intercambiarlos directamente en el bucle de integración para el análisis
-comparativo.
-
-Las simulaciones de los cuatro escenarios se ejecutan con el mismo horizonte
-temporal y condiciones iniciales, variando únicamente los parámetros de hardware
-correspondientes. Los resultados se grafican en el espacio de fases $(T, I, P)$
-y como series temporales individuales. Las animaciones con Manim muestran la
-trayectoria en tiempo real, resaltando el instante de activación del throttling,
-la entrada al régimen oscilatorio y la convergencia al equilibrio en los escenarios
-exitosos.
+Los cuatro escenarios se ejecutan con el mismo horizonte temporal y
+condiciones iniciales, variando únicamente los parámetros de hardware
+correspondientes. Los resultados se grafican como series temporales de
+$T$, $R$ y $P$, y como trayectorias en el espacio de fases $(T, R, P)$.
+Las animaciones con Manim muestran la evolución en tiempo real, resaltando
+la activación del throttling, la entrada al régimen oscilatorio y la
+convergencia al equilibrio.
 
 \subsection{Uso de IA}
 
-Durante el desarrollo del proyecto se emplearon herramientas de inteligencia
-artificial en los siguientes contextos:
-
 \begin{itemize}
-  \item \ia{Consulta de conceptos teóricos sobre el Modelo Roofline, el Modelo de
-        Capacitancia Concentrada y las funciones de barrera de control, para
-        clarificar su aplicabilidad al modelo propuesto.}
-  \item \ia{Identificación de referencias bibliográficas relevantes (Incropera,
-        Kleinrock, Nocedal \& Wright, Rao, Brooks \& Martonosi) para respaldar las
-        decisiones de modelado.}
-  \item \ia{Revisión de errores en la verificación dimensional de las constantes del
-        modelo tras un análisis propio previo.}
-  \item \ia{Sugerencia de condiciones iniciales y rangos de parámetros adicionales
-        donde el sistema pudiera exhibir comportamientos interesantes, explorada
-        después de forma propia mediante simulación.}
+  \item \ia{Consulta de conceptos teóricos sobre el Modelo Roofline,
+        Capacitancia Concentrada y funciones de barrera de control.}
+  \item \ia{Identificación de referencias bibliográficas relevantes.}
+  \item \ia{Revisión de errores en la verificación dimensional de las
+        constantes tras un análisis propio previo.}
+  \item \ia{Sugerencia de condiciones iniciales y rangos de parámetros
+        interesantes, explorada después de forma propia.}
 \end{itemize}
 
-No se empleó IA para: generar el código de los métodos numéricos, escribir el
-contenido del informe o la presentación, producir imágenes o animaciones, ni tomar
-decisiones de modelado o análisis.
+No se empleó IA para: generar el código, escribir el informe o la
+presentación, producir imágenes o animaciones, ni tomar decisiones de
+modelado o análisis.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Resultados y Discusión}
@@ -612,8 +590,8 @@ decisiones de modelado o análisis.
 
 \subsection{Condiciones iniciales y parámetros}
 
-Las condiciones iniciales representan el estado del equipo en $t = 0$, justo antes
-de lanzar el proceso de inferencia (equipo encendido pero en reposo):
+Las condiciones iniciales representan el estado del equipo en $t = 0$,
+justo antes de lanzar la carga de trabajo (equipo en reposo):
 
 \begin{table}[H]
 \centering
@@ -624,9 +602,9 @@ de lanzar el proceso de inferencia (equipo encendido pero en reposo):
 \toprule
 Variable & Valor & Significado físico \\
 \midrule
-$T(0)$ & 45\,\textdegree C & Temperatura de reposo (carga base del SO) \\
-$P(0)$ & 15\,W             & Potencia base del SO en inactividad \\
-$I(0)$ & 0\,tokens/s       & LLM aún no iniciado \\
+$T(0)$ & 45\,\textdegree C & Temperatura de reposo con carga base del SO \\
+$P(0)$ & 15\,W             & Potencia base en inactividad \\
+$R(0)$ & 0\,ops/s          & Procesador sin carga activa \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -640,37 +618,31 @@ $I(0)$ & 0\,tokens/s       & LLM aún no iniciado \\
 \toprule
 Parámetro & Valor & Descripción \\
 \midrule
-$T_{\text{amb}}$  & 25\,\textdegree C  & Temperatura ambiente \\
-$T_{\text{crit}}$ & 90\,\textdegree C  & Umbral de activación del throttling \\
-$I_{\text{obj}}$  & 20\,tokens/s       & Velocidad objetivo del gobernador \\
-$I_{\text{min}}$  & 5\,tokens/s        & Umbral mínimo de viabilidad operativa \\
-$P_{\text{min}}$  & 5\,W               & Potencia mínima física del procesador \\
+$T_{\text{amb}}$  & 25\,\textdegree C     & Temperatura ambiente \\
+$T_{\text{crit}}$ & 90\,\textdegree C     & Umbral del throttling logístico \\
+$R_{\text{obj}}$  & 20\,ops/s (norm.)     & Throughput objetivo del gobernador \\
+$R_{\text{min}}$  & 5\,ops/s (norm.)      & Umbral mínimo de viabilidad \\
+$P_{\text{min}}$  & 5\,W                  & Potencia mínima física \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Se usa como referencia un portátil de gama media-alta típico para IA local
-(procesador de 8 núcleos a 3.5\,GHz):
-
 \begin{table}[H]
 \centering
-\caption{Valores de hardware de referencia}
+\caption{Hardware de referencia (procesador 8 núcleos, 3.5\,GHz)}
 \label{tab:hw}
 \small
 \begin{tabular}{@{}llcc@{}}
 \toprule
 Variable & Símbolo & Valor & Unidad \\
 \midrule
-Núcleos físicos     & $N_c$            & 8    & --- \\
-Hilos lógicos       & $N_h$            & 16   & --- \\
-Frecuencia          & $f_p$            & 3.5  & GHz \\
-Caché               & $C_p$            & 24   & MB \\
-Velocidad RAM       & $v_{\text{ram}}$ & 4800 & MT/s \\
-Capacidad RAM       & $M_{\text{ram}}$ & 32   & GB \\
-Almacenamiento      & $v_{\text{alm}}$ & 3500 & MB/s \\
-Flujo de aire       & $\Phi_{\text{aire}}$ & 2.5 & CFM \\
-Eficiencia disipador& $H_d$            & 5.0  & W/\textdegree C \\
-Velocidad bus       & $v_{\text{bus}}$ & 16   & GT/s \\
+Núcleos físicos      & $N_c$                   & 8    & ---  \\
+Hilos lógicos        & $N_h$                   & 16   & ---  \\
+Frecuencia           & $f_p$                   & 3.5  & GHz  \\
+Velocidad RAM        & $v_{\text{ram}}$        & 4800 & MT/s \\
+Velocidad bus PCIe   & $v_{\text{bus}}$        & 16   & GT/s \\
+Flujo de aire        & $\Phi_{\text{aire}}$    & 2.5  & CFM  \\
+Conductancia disip.  & $H_d$                   & 5.0  & W/\textdegree C \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -684,156 +656,156 @@ Velocidad bus       & $v_{\text{bus}}$ & 16   & GT/s \\
 \toprule
 Factor & Símbolo & Valor & Justificación \\
 \midrule
-Ineficiencia térmica  & $\kappa_0$ & $0.002$           & Proceso 7\,nm \\
-Convección            & $\eta_0$   & $0.004$           & Chasis parcialmente obstruido \\
-Eficiencia IPC        & $\gamma_0$ & $0.015$           & NPU habilitada \\
-Latencia intrínseca   & $\delta_0$ & $1.2\times10^{8}$ & Overhead estándar del SO \\
-Ganancia gobernador   & $\alpha_0$ & $0.8$             & Perfil Máximo Rendimiento \\
-Pánico firmware       & $\beta_0$  & $0.0001$          & Protección moderada \\
+Ineficiencia térmica & $\kappa_0$ & $0.002$           & Litografía 7\,nm \\
+Convección           & $\eta_0$   & $0.004$           & Chasis parcialmente obstruido \\
+Eficiencia IPC       & $\gamma_0$ & $0.015$           & Cómputo paralelo \\
+Latencia intrínseca  & $\delta_0$ & $1.2\times10^{8}$ & \emph{Overhead} estándar del SO \\
+Ganancia gobernador  & $\alpha_0$ & $0.8$             & Perfil Máximo Rendimiento \\
+Corte máx.\ firmware & $\beta$    & $12$\,W           & Protección moderada \\
+Agresividad logística& $k$        & $0.5$             & DVFS típico [\textdegree C$^{-1}$] \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 Con estos valores, los parámetros del modelo resultan:
 
-\begin{align*}
-  k_1 &= 0.002 \times (3.5 \times 8) = 0.056\;\text{\textdegree C\,s}^{-1}\text{W}^{-1}\\
-  k_2 &= 0.004 \times (2.5 \times 5.0) = 0.050\;\text{s}^{-1}\\
-  \gamma &= 0.015 \times (16 \times 3.5) \times \ln\!\left(\tfrac{24 \times 16}{1}\right)
-           \approx 5.03\;\text{tokens\,s}^{-2}\text{W}^{-1}\\
-  \delta &= \frac{1.2\times10^{8}}{4800 \times 32 \times 3500} \approx 0.223\;\text{s}^{-1}\\
-  \alpha &= 0.8 \times \frac{16}{8} = 1.6\;\text{W\,s}^{-1}\text{(tokens/s)}^{-1}\\
-  \beta  &= 0.0001 \times 3.5 = 3.5\times10^{-4}\;\text{W\,s}^{-1}\text{\textdegree C}^{-3}
-\end{align*}
+\begin{align}
+  k_1    &= 0.002 \times (3.5 \times 8)
+           = 0.056\;\text{\textdegree C\,s}^{-1}\text{W}^{-1} \notag\\
+  k_2    &= 0.004 \times (2.5 \times 5.0)
+           = 0.050\;\text{s}^{-1} \notag\\
+  \gamma &= 0.015 \times (16 \times 3.5)
+           = 0.840\;\text{ops\,s}^{-2}\text{W}^{-1} \notag\\
+  \delta &= \frac{1.2\times10^{8}}{\min(4800,\,16)}
+           = \frac{1.2\times10^{8}}{16}
+           = 7.5\times10^{6}\;\text{s}^{-1} \notag\\
+  \alpha &= 0.8 \times \frac{16}{8}
+           = 1.6\;\text{W\,s}^{-1}(\text{ops\,s}^{-1})^{-1} \notag
+\end{align}
+
+\begin{notacal}
+Los factores $\gamma_0$ y $\delta_0$ deben ajustarse iterativamente hasta
+que $P^* = \delta \cdot R_{\text{obj}}/\gamma$ caiga en el rango físico
+esperado (15--45\,W bajo carga). Este proceso de calibración es parte de la
+metodología y debe documentarse en el informe.
+\end{notacal}
 
 \subsection{Análisis de puntos de equilibrio}
 
-\subsubsection{Equilibrio sin throttling ($T^* < T_{\text{crit}}$)}
+\subsubsection{Equilibrio sin throttling activo}
 
-Igualando las tres derivadas a cero:
+Igualando las tres derivadas a cero y asumiendo que $T^*$ está
+suficientemente alejada de $T_{\text{crit}}$ (throttling despreciable):
 
 \begin{align*}
   \frac{dT}{dt}=0 &\implies T^* = T_{\text{amb}} + \frac{k_1}{k_2} P^* \\
-  \frac{dI}{dt}=0 &\implies I^* = \frac{\gamma}{\delta} P^* \\
-  \frac{dP}{dt}=0 &\implies I^* = I_{\text{obj}}
+  \frac{dR}{dt}=0 &\implies R^* = \frac{\gamma}{\delta} P^* \\
+  \frac{dP}{dt}=0 &\implies R^* = R_{\text{obj}}
 \end{align*}
 
-De la tercera se obtiene $I^* = I_{\text{obj}}$. Sustituyendo:
+De la tercera se obtiene $R^* = R_{\text{obj}}$. Sustituyendo:
 
 \begin{equation}
-  P^* = \frac{\delta \cdot I_{\text{obj}}}{\gamma}, \qquad
-  T^* = T_{\text{amb}} + \frac{k_1 \delta \cdot I_{\text{obj}}}{k_2 \gamma}
+  P^* = \frac{\delta \cdot R_{\text{obj}}}{\gamma}, \qquad
+  T^* = T_{\text{amb}} + \frac{k_1 \delta \cdot R_{\text{obj}}}{k_2 \gamma}
 \end{equation}
 
-\begin{notacal}
-Con los valores de referencia: $P^* = (0.223 \times 20)/5.03 \approx 0.887\;\text{W}$.
-Este valor es físicamente inconsistente (un portátil bajo carga debería estar en
-15--45\,W), lo que indica que $\gamma$ requiere recalibración iterativa. Este
-proceso de ajuste es parte de la metodología y debe documentarse.
-\end{notacal}
-
-La condición de existencia del equilibrio estable es:
+La \textbf{condición de viabilidad térmica} es:
 
 \begin{equation}
-  T^* < T_{\text{crit}} \iff \frac{k_1 \delta}{k_2 \gamma} < \frac{T_{\text{crit}} - T_{\text{amb}}}{I_{\text{obj}}}
+  T^* < T_{\text{crit}}
+  \iff
+  \frac{k_1 \delta}{k_2 \gamma} < \frac{T_{\text{crit}} - T_{\text{amb}}}{R_{\text{obj}}}
   \label{eq:viabilidad}
 \end{equation}
 
-Esta desigualdad es la \textbf{condición de viabilidad} del equipo para sostener
-la carga de IA sin throttling.
+Cuando se cumple, el sistema puede alcanzar un equilibrio estable con
+throughput pleno. Cuando no, entra en régimen oscilatorio.
 
 \subsubsection{Estabilidad por retroalimentación negativa}
 
-Para verificar que $(T^*, I^*, P^*)$ es un atractor estable, se analiza la
-dirección de las derivadas ante perturbaciones.
-
-\smallskip\noindent\textbf{Perturbación térmica.} Si la temperatura sube a
-$T^* + \varepsilon$ con $\varepsilon > 0$:
+\noindent\textbf{Perturbación térmica.}
+Si $T$ sube a $T^* + \varepsilon$ con $\varepsilon > 0$:
 
 \begin{equation*}
   \frac{dT}{dt}\bigg|_{T^*+\varepsilon}
-  = \underbrace{k_1 P^* - k_2(T^*-T_{\text{amb}})}_{=\,0} - k_2\varepsilon = -k_2\varepsilon < 0
+  = \underbrace{k_1 P^* - k_2(T^*-T_{\text{amb}})}_{=\,0}
+  - k_2\varepsilon = -k_2\varepsilon < 0
 \end{equation*}
 
-La derivada es negativa: el sistema enfría activamente hacia $T^*$. El coeficiente
-$k_2 > 0$ actúa como fuerza de amortiguación proporcional al desvío.
+La derivada es negativa: el sistema enfría activamente hacia $T^*$.
+$k_2 > 0$ actúa como fuerza de amortiguación proporcional al desvío
+---retroalimentación negativa pura.
 
-\smallskip\noindent\textbf{Perturbación de inferencia.} Si $I$ cae por debajo
-de $I^*$, el término $\alpha(I_{\text{obj}} - I)$ se vuelve positivo, aumentando
-$\dot{P}$, lo que empuja $\dot{I} = \gamma P - \delta I$ hacia valores positivos,
-recuperando la velocidad. El término $-\delta I(t)$ actúa simultáneamente como
-fricción que impide sobrepasar $I^*$.
+\noindent\textbf{Perturbación de rendimiento.}
+Si $R$ cae bajo $R^*$, el término $\alpha(R_{\text{obj}} - R)$ se vuelve
+positivo, aumentando $\dot{P}$, lo que empuja $\dot{R} = \gamma P - \delta R$
+hacia valores positivos y recupera el throughput. El término $-\delta R(t)$
+actúa como fricción que impide sobrepasar $R^*$.
 
-La estabilidad requiere que se satisfaga la misma condición~(\ref{eq:viabilidad}).
+La estabilidad requiere que se satisfaga la
+condición~(\ref{eq:viabilidad}).
 
 \subsubsection{Régimen oscilatorio}
 
-Cuando la condición de viabilidad no se cumple, el sistema entra en el ciclo:
+Cuando la condición de viabilidad no se cumple:
 
 \begin{enumerate}
-  \item El SO aumenta la potencia buscando alcanzar $I_{\text{obj}}$.
-  \item La temperatura sube y supera $T_{\text{crit}}$.
-  \item El firmware activa el throttling cúbico, colapsando la potencia.
-  \item La temperatura baja al perder la fuente de calor.
-  \item El SO intenta recuperar la potencia y el ciclo reinicia.
+  \item El SO aumenta $P$ buscando alcanzar $R_{\text{obj}}$.
+  \item $T$ sube y activa progresivamente el throttling logístico.
+  \item El firmware reduce $P$ de forma acelerada.
+  \item $T$ cae al perder la fuente de calor.
+  \item El SO intenta recuperar $P$ y el ciclo reinicia.
 \end{enumerate}
 
-Este régimen hace al equipo inviable para cargas de IA: la inferencia oscila entre
-valores altos (inestables térmicamente) y valores bajos (en recuperación
-post-throttling), sin converger a un estado estable con $I \geq I_{\min}$.
+El equipo es inviable para cargas sostenidas: $R$ oscila sin converger
+a un estado estable con $R \geq R_{\min}$.
 
 \subsection{Cuatro escenarios de intervención}
 
-Los escenarios modifican los parámetros del hardware para evaluar qué
-intervenciones permiten mover el sistema desde el régimen oscilatorio hacia un
-equilibrio estable.
-
 \subsubsection*{Escenario 0 --- Base (control)}
-Portátil estándar sin modificaciones. Parámetros de la Tabla~\ref{tab:hw}.
-Puede o no tener equilibrio estable según la condición~(\ref{eq:viabilidad}).
-Es el punto de referencia para medir variaciones porcentuales.
+Hardware sin modificaciones. Parámetros de la Tabla~\ref{tab:hw}. Puede o
+no satisfacer la condición~(\ref{eq:viabilidad}). Punto de referencia para
+variaciones porcentuales.
 
-\subsubsection*{Escenario 1 --- Intervención de software (undervolting)}
-\textbf{Modificación:} Reducción de $\alpha_0$ (gobernador menos agresivo) y
-limitación de $P_{\max}$ a 35\,W.\\
-\textbf{Efecto esperado:} El SO sube la potencia más lentamente, dando tiempo al
-disipador para mantenerse por debajo de $T_{\text{crit}}$. Puede estabilizar el
-sistema a costa de reducir $I^*$.\\
-\textbf{Variable de comparación:} ¿Alcanza $I^* \geq I_{\min} = 5$\,tokens/s?
+\subsubsection*{Escenario 1 --- Undervolting (perfil conservador)}
+\textbf{Modificación:} Reducción de $\alpha_0$.\\
+\textbf{Efecto esperado:} El SO sube $P$ más lentamente, alejando $T$ de
+$T_{\text{crit}}$. Puede estabilizar el sistema a costa de un $R^*$
+inferior.\\
+\textbf{Comparación:} ¿Alcanza $R^* \geq R_{\min}$?
 
-\subsubsection*{Escenario 2 --- Hardware ligero (base refrigerante / limpieza)}
-\textbf{Modificación:} Aumento de $\Phi_{\text{aire}}$ $\rightarrow$ $k_2$ sube.\\
-\textbf{Efecto esperado:} Mayor disipación térmica desplaza $T^*$ hacia abajo,
-permitiendo el equilibrio sin sacrificar velocidad.\\
-\textbf{Variable de comparación:} Variación porcentual de $T^*$ y de la frecuencia
-de oscilación respecto al escenario base.
+\subsubsection*{Escenario 2 --- Hardware ligero (base refrigerante)}
+\textbf{Modificación:} Aumento de $\Phi_{\text{aire}}$ $\to$ $k_2$ sube.\\
+\textbf{Efecto esperado:} Mayor disipación desplaza $T^*$ hacia abajo sin
+sacrificar throughput.\\
+\textbf{Comparación:} Variación porcentual de $T^*$ y frecuencia de
+oscilación vs.\ escenario base.
 
-\subsubsection*{Escenario 3 --- Hardware profundo (pasta térmica de metal líquido)}
-\textbf{Modificación:} Aumento de $H_d$ y ajuste de $\eta_0$
-$\rightarrow$ $k_2$ sube sustancialmente.\\
-\textbf{Efecto esperado:} Si el nuevo $k_2$ cumple la condición~(\ref{eq:viabilidad}),
-el sistema converge al equilibrio estable con inferencia plena.\\
-\textbf{Variable de comparación:} Tiempo de convergencia y máxima temperatura
-alcanzada durante la transición.
+\subsubsection*{Escenario 3 --- Hardware profundo (metal líquido)}
+\textbf{Modificación:} Aumento de $H_d$ $\to$ $k_2$ sube sustancialmente.\\
+\textbf{Efecto esperado:} Si el nuevo $k_2$ cumple~(\ref{eq:viabilidad}),
+el sistema converge al equilibrio con throughput pleno.\\
+\textbf{Comparación:} Tiempo de convergencia y temperatura máxima durante
+la transición.
 
 \subsection{Comparación entre métodos y tamaños de paso}
 
-% PENDIENTE: completar con resultados de ejecución del código.
-% Incluir tabla de E_rel(h) para cada h y cada método.
-% Incluir gráfica log-log de E vs h mostrando la pendiente de orden 4.
-[Sección por completar con resultados numéricos]
+% PENDIENTE: completar con resultados numéricos.
+% Incluir tabla de E_rel(h) para Euler, Euler Mejorado y RK4.
+% Incluir gráfica log-log de E vs h con pendientes de orden 1, 2 y 4.
+\textit{[Sección por completar con resultados de la simulación.]}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Conclusiones}
 \label{sec:conclusiones}
 
-% PENDIENTE: completar tras obtener los resultados de simulación.
-[Sección por completar]
+% PENDIENTE: completar tras obtener resultados de simulación.
+\textit{[Sección por completar.]}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section*{Repositorio}
 
-% Completar con el enlace al repositorio del equipo.
 Código disponible en: \url{https://github.com/...}
 
 % ══════════════════════════════════════════════════════════════════════════════
