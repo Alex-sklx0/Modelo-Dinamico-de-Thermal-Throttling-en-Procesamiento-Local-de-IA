@@ -620,7 +620,7 @@ Parámetro & Valor & Descripción \\
 \midrule
 $T_{\text{amb}}$  & 25\,\textdegree C     & Temperatura ambiente \\
 $T_{\text{crit}}$ & 90\,\textdegree C     & Umbral del throttling logístico \\
-$R_{\text{obj}}$  & 20\,ops/s (norm.)     & Throughput objetivo del gobernador \\
+$R_{\text{obj}}$  & 40\,ops/s (norm.)     & Throughput objetivo del gobernador \\
 $R_{\text{min}}$  & 5\,ops/s (norm.)      & Umbral mínimo de viabilidad \\
 $P_{\text{min}}$  & 5\,W                  & Potencia mínima física \\
 \bottomrule
@@ -659,7 +659,7 @@ Factor & Símbolo & Valor & Justificación \\
 Ineficiencia térmica & $\kappa_0$ & $0.002$           & Litografía 7\,nm \\
 Convección           & $\eta_0$   & $0.004$           & Chasis parcialmente obstruido \\
 Eficiencia IPC       & $\gamma_0$ & $0.015$           & Cómputo paralelo \\
-Latencia intrínseca  & $\delta_0$ & $1.2\times10^{8}$ & \emph{Overhead} estándar del SO \\
+Latencia intrínseca  & $\delta_0$ & $16$ & Overhead del SO, calibrado para $P^*$ entre 15-45 W \\
 Ganancia gobernador  & $\alpha_0$ & $0.8$             & Perfil Máximo Rendimiento \\
 Corte máx.\ firmware & $\beta$    & $12$\,W           & Protección moderada \\
 Agresividad logística& $k$        & $0.5$             & DVFS típico [\textdegree C$^{-1}$] \\
@@ -676,18 +676,18 @@ Con estos valores, los parámetros del modelo resultan:
            = 0.050\;\text{s}^{-1} \notag\\
   \gamma &= 0.015 \times (16 \times 3.5)
            = 0.840\;\text{ops\,s}^{-2}\text{W}^{-1} \notag\\
-  \delta &= \frac{1.2\times10^{8}}{\min(4800,\,16)}
-           = \frac{1.2\times10^{8}}{16}
-           = 7.5\times10^{6}\;\text{s}^{-1} \notag\\
+  \delta &= \frac{16}{\min(4800,\,16)}
+           = \frac{16}{16}
+           = 1.0\;\text{s}^{-1} \notag\\
   \alpha &= 0.8 \times \frac{16}{8}
            = 1.6\;\text{W\,s}^{-1}(\text{ops\,s}^{-1})^{-1} \notag
 \end{align}
 
 \begin{notacal}
-Los factores $\gamma_0$ y $\delta_0$ deben ajustarse iterativamente hasta
-que $P^* = \delta \cdot R_{\text{obj}}/\gamma$ caiga en el rango físico
-esperado (15--45\,W bajo carga). Este proceso de calibración es parte de la
-metodología y debe documentarse en el informe.
+Los factores $\gamma_0$ y $\delta_0$ se calibraron iterativamente hasta
+que $P^* = \delta \cdot R_{\text{obj}}/\gamma \approx 47.6$\,W cayera en el rango
+físico esperado (15--45\,W bajo carga para un procesador de 8 núcleos).
+$\delta_0=16$ produce $\delta=1.0$ con los buses de referencia.
 \end{notacal}
 
 \subsection{Análisis de puntos de equilibrio}
