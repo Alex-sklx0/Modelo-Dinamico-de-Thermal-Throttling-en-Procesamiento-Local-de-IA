@@ -14,7 +14,7 @@ con análisis de error, 4 escenarios de intervención y visualización.
 
 ```bash
 # Simulación numérica (terminal)
-python3 simulacion_thermal_throttling.py
+python3 thermal_throttling_core.py
 
 ```
 
