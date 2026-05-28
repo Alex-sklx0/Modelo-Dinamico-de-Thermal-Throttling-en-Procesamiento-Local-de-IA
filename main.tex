@@ -147,7 +147,7 @@ Constante & Expresión & Valor \\
 $k_1$ & $ck1 \cdot f_p \cdot N_c$               & $0.0518$~°C\,s$^{-1}$W$^{-1}$ \\
 $k_2$ & $ck2\cdot \Phi_{\text{aire}} \cdot H_d$  & $0.1001$~s$^{-1}$ \\
 $\gamma$ & $c\gamma \cdot N_h \cdot f_p$              & $0.9979$~GFLOPS\,s$^{-2}$W$^{-1}$ \\
-$\delta$ & $c\delta \,/\,\min(v_\text{ram},v_\text{bus}{\times}10^3)$ & $0.105$~s$^{-1}$ \\
+$\delta$ & $c\delta \,/\,\min(v_\text{ram},v_\text{bus}{\times}10^3)$ & $0.100$~s$^{-1}$ \\
 $\alpha$ & $c\alpha \cdot N_h/N_c$                      & $1.6$ \\
 $\beta$  & calibración directa                     & $12.0$~W \\
 $k_{\text{sig}}$ & calibración directa             & $0.5$~°C$^{-1}$ \\
@@ -162,40 +162,71 @@ $\Phi_\text{aire}=45.0$\,CFM, $H_d=0.004$\,W/°C.
 Cada factor de ajuste convierte las unidades del hardware (GHz, CFM, MT/s)
 a las unidades que requieren las EDOs. Sus valores se fijaron por análisis
 dimensional y calibración sobre el caso base ($T^* = 79.5$\,°C, $P^* = 105.2$\,W, $R^* = 1000 GFLOPS$):
-
-\begin{itemize}\setlength\itemsep{1pt}
-  \item $c_{k_1}=0.0024$~[°C\,/(GHz$\cdot$núcleo$\cdot$W$\cdot$s)]: convierte
-        la disipación de calor por efecto Joule a la tasa $dT/dt$
-        correcta para un chip de silicio de gama media-alta.
-        Fue ajustado para que el equilibrio térmico en el caso base quede
-        en el rango físico 70--85\,°C.
-
-  \item $c_{k_2}=0.556$~[$\Phi_\text{aire}{\cdot}H_d$ a
-        s$^{-1}$]: convierte el producto CFM$\times$(W/°C) a la
-        constante de tiempo de disipación del modelo concentrado.
-        Su valor refleja la eficiencia media de disipadores de torre de
-        bajo-medio costo frente a las condiciones del caso base.
-
-  \item $c_{\gamma}=0.0231$~[GFLOPS\,/(hilo$\cdot$GHz$\cdot$W$\cdot$s)]:
-        convierte la capacidad de cómputo (hilos $\times$ GHz) y la
-        potencia a la aceleración de throughput $dR/dt$.
-        Calibrado para que $\gamma P^* \approx \delta R^*$
-        en el equilibrio, garantizando consistencia dimensional.
-
-  \item $c_{\delta}=336.0$~[s/MT$\cdot$s$^{-1}$]: convierte la velocidad
-        de memoria (MT/s) al coeficiente de fricción $\delta$~[s$^{-1}$].
-        Representa la relación entre el ancho de banda disponible y el
-        throughput que el sistema puede sostener; el denominador toma el
-        canal más lento (Modelo Roofline), con $v_\text{bus}$ escalado a
-        MT/s para comparar en la misma unidad.
-
-  \item $c_{\alpha}=0.8$~[ $N_h/N_c$ a agresividad del
-        SO]: pondera el ratio hilos/núcleos con la sensibilidad
-        típica del planificador del SO en modo rendimiento.
-        Un valor mayor representaría un perfil de energía más agresivo
-        (``Ultra Performance''), un valor menor, un perfil conservador
-        (``Power Saver'').
-\end{itemize}
+subsubsection*{Paso 1 — Razones desde el equilibrio algebraico}
+ 
+Igualando $\dot{R}=0$ y $\dot{T}=0$ con throttling despreciable se
+obtienen dos proporciones exactas entre las constantes:
+ 
+\begin{align}
+  \frac{\delta}{\gamma} &= \frac{P^*}{R^*}
+    = \frac{105.2\,\text{W}}{1000\,\text{GFLOPS}} = 0.1052
+    \label{eq:ratio_dg} \\[4pt]
+  \frac{k_1}{k_2} &= \frac{T^*-T_\text{amb}}{P^*}
+    = \frac{79.5-25}{105.2} = 0.518\;\text{°C/W}
+    \label{eq:ratio_k}
+\end{align}
+ 
+ 
+\subsubsection*{Escala absoluta desde física del sistema}
+ 
+Cada razón define una recta en el espacio de parámetros y se necesita
+un segundo dato independiente para fijar el punto sobre esa recta.
+ 
+\medskip\noindent\textbf{Par térmico ($k_1$, $k_2$).}
+En el modelo de capacitancia concentrada~\cite{incropera},
+$k_2 = 1/(R_{th}\,C_{th})$ y $k_1 = 1/C_{th}$, donde
+$R_{th}$~[°C/W] es la resistencia térmica total
+y $C_{th}$~[J/°C] es la capacitancia térmica del conjunto chip y disipador.
+$R_{th}$ se verifica directamente desde el equilibrio:
+ 
+\[
+  R_{th} = \frac{T^* - T_\text{amb}}{P^*} = \frac{54.5}{105.2}
+         = 0.518\;\text{°C/W}
+\]
+ 
+$C_{th}$ proviene de la masa física del sistema: die de silicio
+(${\approx}5$\,g) más disipador de cobre (${\approx}200$\,g) con
+calor específico del cobre de 385\,J/(kg·°C), dando
+$C_{th} \approx 200$\,J/°C. Con eso:
+ 
+\[
+  k_1 = \frac{1}{C_{th}} = \frac{1}{200} = 0.005\;\text{°C/(W·s)}
+  \qquad
+  k_2 = \frac{k_1}{0.518} = 0.00965\;\text{s}^{-1}
+\]
+ 
+La constante de tiempo térmica resultante es
+$\tau_T = 1/k_2 \approx 100$\,s.
+ 
+\medskip\noindent\textbf{Par de rendimiento ($\gamma$, $\delta$).} 
+Si se interrumpe la potencia ($P=0$), el rendimiento decae de forma exponencial según la ecuación $R(t) = R_0 e^{-\delta t}$, lo que modela el vaciado físico de los \textit{buffers} e instrucciones~\cite{brooks}. La velocidad de este decaimiento se mide universalmente con la constante de tiempo $\tau_R = 1/\delta$, que es el tiempo necesario para que la variable caiga hasta el $37\%$ ($e^{-1}$) de su valor inicial. Para un procesador de escritorio bajo carga sostenida, este proceso toma aproximadamente $\tau_R \approx 10$\,s~\cite{brooks}, lo que define directamente el coeficiente de fricción del sistema:
+\[
+\delta = \frac{1}{\tau_R} \approx 0.100\;\text{s}^{-1}
+\]
+A partir de este valor, y empleando la relación de equilibrio estático ($\delta/\gamma = 0.1052$\,W/GFLOPS), se despeja de forma exacta la constante de aceleración computacional $\gamma$:
+\[
+\gamma = \frac{\delta}{0.1052} \approx \frac{0.100}{0.1052} \approx 0.950\;\text{GFLOPS·s}^{-2}\text{W}^{-1}.
+\]
+\subsubsection*{Factores de escala hacia el hardware}
+ 
+Con los valores físicos fijados, los factores $c_x$ son cocientes
+determinísticos entre el valor objetivo y el valor crudo del hardware:
+ 
+\[
+  c_x = \frac{\text{valor físico teorico}}
+             {\text{valor real del hardware}}
+\]
+ 
 
 $\beta$ y $k_\text{sig}$ se calibran directamente porque dependen del
 comportamiento interno del firmware del fabricante, que no es público.
@@ -256,7 +287,7 @@ Con los parámetros del caso base se evalúa cada lado de~(\ref{eq:viabilidad}):
 
 \[
   \frac{k_1\,\delta}{k_2\,\gamma}
-  = \frac{0.0518 \times 0.105}{0.1001 \times 0.9979}
+  = \frac{0.0518 \times 0.100}{0.1001 \times 0.9979}
   = \frac{0.005439}{0.09990}
   = 0.0545
 \]
