@@ -1,0 +1,570 @@
+% ============================================================
+%  Presentación: Modelo Dinámico de Estabilidad Térmica
+%  Compilar: pdflatex presentacion.tex  (dos pasadas)
+% ============================================================
+\documentclass[aspectratio=169, 10pt]{beamer}
+
+% ── Codificación ──────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+\usepackage{lmodern}
+
+% ── Matemáticas ───────────────────────────────────────────
+\usepackage{amsmath, amssymb}
+\usepackage{bm}
+
+% ── Tablas ────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{array}
+
+% ── Colores y gráficos ────────────────────────────────────
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, shapes.geometric, positioning, fit, backgrounds}
+
+% ── Hipervínculos ─────────────────────────────────────────
+\usepackage{hyperref}
+
+% ============================================================
+%  PALETA DE COLORES  (Ocean Gradient oscura)
+% ============================================================
+\definecolor{bg}{HTML}{0A1628}        % fondo oscuro
+\definecolor{primary}{HTML}{065A82}   % azul profundo
+\definecolor{secondary}{HTML}{1C7293} % teal
+\definecolor{accent}{HTML}{4FC3F7}    % celeste claro
+\definecolor{light}{HTML}{E8F4FD}     % casi blanco
+\definecolor{muted}{HTML}{8EAFC4}     % azul grisáceo
+\definecolor{cardBg}{HTML}{0D2137}    % card oscura
+\definecolor{good}{HTML}{4CAF50}      % verde estado estable
+\definecolor{bad}{HTML}{EF5350}       % rojo oscilatorio
+\definecolor{warn}{HTML}{FFA726}      % naranja throttling
+
+% ============================================================
+%  TEMA BEAMER  (limpio, sin ornamentos de AI)
+% ============================================================
+\usetheme{default}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}{}
+\setbeamertemplate{headline}{}
+
+% Colores globales
+\setbeamercolor{normal text}{fg=light, bg=bg}
+\setbeamercolor{frametitle}{fg=accent, bg=bg}
+\setbeamercolor{title}{fg=white, bg=bg}
+\setbeamercolor{subtitle}{fg=accent}
+\setbeamercolor{author}{fg=muted}
+\setbeamercolor{date}{fg=muted}
+\setbeamercolor{block title}{fg=accent, bg=primary}
+\setbeamercolor{block body}{fg=light, bg=cardBg}
+\setbeamercolor{alerted text}{fg=accent}
+\setbeamercolor{item}{fg=accent}
+\setbeamercolor{subitem}{fg=muted}
+
+% Fuentes
+\setbeamerfont{frametitle}{series=\bfseries, size=\large}
+\setbeamerfont{title}{series=\bfseries, size=\Large}
+\setbeamerfont{subtitle}{series=\normalfont, size=\normalsize}
+\setbeamerfont{block title}{series=\bfseries, size=\small}
+
+% Bullet personalizado
+\setbeamertemplate{itemize item}{\textcolor{accent}{\textbullet}}
+\setbeamertemplate{itemize subitem}{\textcolor{muted}{$\circ$}}
+
+% Número de página (esquina inferior derecha)
+\setbeamertemplate{footline}{%
+  \hfill\textcolor{muted}{\tiny\insertframenumber\,/\,\inserttotalframenumber\hspace{6pt}}\vspace{4pt}%
+}
+
+% Fondo global
+\setbeamercolor{background canvas}{bg=bg}
+
+% Frame title con línea de acento lateral
+\setbeamertemplate{frametitle}{%
+  \vspace{8pt}%
+  \hspace{-2pt}\textcolor{accent}{\rule{3pt}{18pt}}\hspace{8pt}%
+  \insertframetitle\par%
+  \vspace{4pt}%
+}
+
+% ── Comandos de utilidad ─────────────────────────────────
+\newcommand{\tcrit}{T_{\text{crit}}}
+\newcommand{\tamb}{T_{\text{amb}}}
+\newcommand{\robj}{R_{\text{obj}}}
+\newcommand{\ksec}[1]{\textcolor{accent}{\textbf{#1}}}
+\newcommand{\tagbadge}[2]{%
+  \tikz[baseline=-2pt]\node[fill=#1, text=white, rounded corners=2pt,
+    inner sep=2pt, font=\scriptsize\bfseries]{#2};%
+}
+\newcommand{\stable}{\tagbadge{good}{Estable}}
+\newcommand{\oscil}{\tagbadge{bad}{Oscilatorio}}
+\newcommand{\throttle}{\tagbadge{warn}{Throttling prof.}}
+
+% ============================================================
+%  METADATOS
+% ============================================================
+\title{Modelo Dinámico de Estabilidad Térmica\\y Rendimiento en Procesadores}
+\subtitle{Métodos Numéricos — UPB 2026}
+\author{David Salazar \and Julián Ramírez \and Juan Gaviria}
+\date{26 de mayo de 2026}
+
+% ============================================================
+\begin{document}
+% ============================================================
+
+% ── PORTADA ─────────────────────────────────────────────────
+{
+\setbeamertemplate{footline}{}
+\begin{frame}[plain]
+  \begin{tikzpicture}[remember picture, overlay]
+    % Panel lateral derecho decorativo
+    \fill[primary, opacity=0.45]
+      (current page.north east) rectangle
+      ([xshift=-3.2cm]current page.south east);
+    % Círculo de acento
+    \fill[secondary, opacity=0.25]
+      ([xshift=-1.6cm, yshift=0.6cm]current page.east) circle (2.8cm);
+    \fill[accent, opacity=0.12]
+      ([xshift=-1.6cm, yshift=0.6cm]current page.east) circle (1.8cm);
+    % Ícono CPU simplificado (texto)
+    % CPU icon (TikZ)
+    \begin{scope}[shift={([xshift=-1.6cm, yshift=0.6cm]current page.east)},
+                  opacity=0.65]
+      \fill[accent] (-0.55,-0.55) rectangle (0.55,0.55);
+      \fill[bg]     (-0.32,-0.32) rectangle (0.32,0.32);
+      \foreach \a in {0,90,180,270}{
+        \fill[accent, rotate around={\a:(0,0)}]
+          (-0.08,0.55) rectangle (0.08,0.75);
+        \fill[accent, rotate around={\a:(0,0)}]
+          (-0.24,0.55) rectangle (-0.08,0.72);
+        \fill[accent, rotate around={\a:(0,0)}]
+          (0.08,0.55) rectangle (0.24,0.72);
+      }
+    \end{scope}
+  \end{tikzpicture}
+
+  \vspace{1.8cm}
+  \hspace{0.7cm}%
+  \begin{minipage}{0.65\textwidth}
+    \textcolor{accent}{\rule{40pt}{2pt}}\\[6pt]
+    {\fontsize{17}{20}\bfseries\color{white}
+      Modelo Dinámico de Estabilidad Térmica\\[2pt]
+      y Rendimiento en Procesadores}\\[8pt]
+    {\small\color{muted} Métodos Numéricos · UPB · 2026}\\[16pt]
+    \textcolor{light}{\small
+      David Salazar · Julián Ramírez · Juan Gaviria}\\[4pt]
+    \textcolor{muted}{\scriptsize 28 de mayo de 2026}
+  \end{minipage}
+\end{frame}
+}
+
+% ── 1. ROLES DEL EQUIPO ─────────────────────────────────────
+\begin{frame}{Roles del Equipo}
+  \begin{columns}[c]
+    \begin{column}{0.33\textwidth}
+      \begin{block}{David Salazar}
+        \textbf{Modelado Matemático}\\[4pt]
+        \small
+        \begin{itemize}
+          \item Derivación de las 3 EDOs
+          \item Dimensionado de constantes físicas ($k_1,k_2,\gamma,\delta,\alpha$)
+          \item Análisis de puntos de equilibrio y condición de viabilidad térmica
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{block}{Julián Ramírez}
+        \textbf{Implementación Numérica}\\[4pt]
+        \small
+        \begin{itemize}
+          \item Euler, Euler Mejorado y RK4 desde cero
+          \item Análisis de error comparativo
+          \item Validación contra RK45 de SciPy
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{block}{Juan Gaviria}
+        \textbf{Simulación y Visualización}\\[4pt]
+        \small
+        \begin{itemize}
+          \item Diseño de los 10 casos de prueba
+          \item Animaciones interactivas en p5.js
+          \item Análisis e interpretación de resultados
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── 2. DEFINICIÓN DEL SISTEMA ────────────────────────────────
+\begin{frame}{Definición del Sistema}
+  \begin{columns}[c]
+    \begin{column}{0.54\textwidth}
+      \textbf{¿Qué modelamos?}\\[6pt]
+      \small El \textbf{thermal throttling} de un procesador bajo carga
+      sostenida: la caída no lineal del rendimiento cuando la temperatura
+      se acerca al umbral crítico del chip.\\[8pt]
+
+      \textbf{Variables de estado:}
+      \begin{itemize}
+        \item $T(t)$ — Temperatura del procesador [°C]
+        \item $P(t)$ — Potencia consumida [W]
+        \item $R(t)$ — Throughput efectivo [GFLOPS]
+      \end{itemize}
+      \vspace{6pt}
+      \textbf{Bucle de retroalimentación:}\\[4pt]
+      \small $P$ calienta el chip $\to$ calor activa throttling $\to$
+      throttling reduce $R$ $\to$ SO demanda más $P$
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{tikzpicture}[
+        node distance=1.0cm,
+        box/.style={rectangle, rounded corners=3pt, fill=cardBg,
+                    draw=secondary, text=light, font=\scriptsize,
+                    minimum width=2.4cm, minimum height=0.55cm,
+                    text centered},
+        arr/.style={-{Stealth[length=5pt]}, color=accent, thick}
+      ]
+        \node[box] (T) {Temperatura $T$};
+        \node[box, below=of T] (P) {Potencia $P$};
+        \node[box, below=of P] (R) {Throughput $R$};
+        \node[box, right=1.2cm of P, fill=primary!60, draw=accent,
+              text=accent, font=\scriptsize\bfseries] (sig)
+              {Throttling $\sigma(T)$};
+
+        \draw[arr] (P) -- node[right, font=\tiny, text=muted]{efecto Joule} (T);
+        \draw[arr] (T) -- node[right, font=\tiny, text=muted]{activa} (sig);
+        \draw[arr] (sig) -- node[above, font=\tiny, text=muted]{recorta} (P);
+        \draw[arr] (P) -- node[right, font=\tiny, text=muted]{impulsa} (R);
+        \draw[arr, bend right=40] (R) edge
+          node[left, font=\tiny, text=muted]{déficit $\to$ SO} (P);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── 3. MODELADO MATEMÁTICO ──────────────────────────────────
+\begin{frame}{Modelado Matemático}
+  \textbf{Sistema de 3 EDOs acopladas:}\\[6pt]
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \textcolor{accent}{\small\textbf{Dinámica Térmica}}
+      \begin{equation*}
+        \frac{dT}{dt} = k_1 P(t) - k_2\!\left(T(t) - \tamb\right)
+      \end{equation*}
+      \scriptsize Capacitancia térmica concentrada:\\
+      calentamiento Joule vs. ley de Newton.\\[8pt]
+
+      \textcolor{accent}{\small\textbf{Dinámica de Rendimiento}}
+      \begin{equation*}
+        \frac{dR}{dt} = \gamma P(t) - \delta R(t)
+      \end{equation*}
+      \scriptsize Modelo de colas (Kleinrock):\\
+      aceleración computacional vs. saturación de buses.
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \textcolor{accent}{\small\textbf{Control de Potencia (Throttling)}}
+      \begin{equation*}
+        \frac{dP}{dt} = \alpha\!\left(\robj - R\right)
+                       - \frac{\beta}{1+e^{-k_{\text{sig}}(T-\tcrit)}}
+      \end{equation*}
+      \scriptsize Controlador proporcional del SO\\ más función sigmoide de throttling.\\[8pt]
+
+      \textcolor{warn}{\small\textbf{No linealidad irreducible:}}\\
+      \scriptsize La sigmoide impide separar e integrar
+      las ecuaciones de forma independiente.
+      $\Rightarrow$ solución solo numérica.
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── 4. PARÁMETROS ──────────────────────────────────────────
+\begin{frame}{Parámetros del Modelo}
+  \begin{columns}[c]
+    \begin{column}{0.5\textwidth}
+      \small
+      \begin{tabular}{@{}lll@{}}
+        \toprule
+        \textcolor{accent}{Constante} & \textcolor{accent}{Expresión} & \textcolor{accent}{Valor} \\
+        \midrule
+        $k_1$ & $c_{k_1}\cdot f_p \cdot N_c$      & $0.0518$ \\
+        $k_2$ & $c_{k_2}\cdot \Phi \cdot H_d$      & $0.1001$ \\
+        $\gamma$ & $c_\gamma\cdot N_h \cdot f_p$   & $0.9979$ \\
+        $\delta$ & $c_\delta\,/\,v_{\min}$         & $0.1050$ \\
+        $\alpha$ & $c_\alpha\cdot N_h/N_c$          & $1.6$ \\
+        $\beta$  & calibración firmware             & $12.0$~W \\
+        $k_{\text{sig}}$ & calibración firmware     & $0.5$~°C$^{-1}$ \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \small
+      \textbf{Hardware base simulado:}
+      \begin{itemize}\setlength\itemsep{2pt}
+        \item $N_c=6$ núcleos, $N_h=12$ hilos
+        \item $f_p=3.6$\,GHz, $\Phi=45$\,CFM
+        \item $v_{\text{ram}}=3200$\,MT/s, $v_{\text{bus}}=16$\,GT/s
+        \item $H_d=0.004$\,W/°C
+      \end{itemize}
+      \vspace{6pt}
+      \textbf{Punto de operación base:}
+      \begin{itemize}\setlength\itemsep{2pt}
+        \item $T^*=79.5$\,°C, $\quad T_{\text{crit}}=90$\,°C
+        \item $P^*=105.2$\,W
+        \item $R^*=1000$\,GFLOPS
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── 5. SIMPLIFICACIÓN A PRIMER ORDEN ────────────────────────
+\begin{frame}{Simplificación a Sistema de Primer Orden}
+  \begin{columns}[c]
+    \begin{column}{0.5\textwidth}
+      El sistema en forma vectorial:
+      \begin{equation*}
+        \dot{\mathbf{x}} = \mathbf{f}(\mathbf{x}),
+        \quad \mathbf{x} = \begin{pmatrix} T \\ R \\ P \end{pmatrix}
+      \end{equation*}
+      \vspace{4pt}
+      \textbf{Puntos de equilibrio} ($\dot{\mathbf{x}}=\mathbf{0}$,
+      throttling despreciable):
+      \begin{equation*}
+        P^* = \frac{\delta\,\robj}{\gamma}, \qquad
+        T^* = \tamb + \frac{k_1\,\delta\,\robj}{k_2\,\gamma}
+      \end{equation*}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Condición de viabilidad térmica:}
+      \begin{equation*}
+        T^* < \tcrit
+        \;\Longleftrightarrow\;
+        \robj < \frac{k_2\,\gamma\,(\tcrit - \tamb)}{k_1\,\delta}
+      \end{equation*}
+      \vspace{4pt}
+      \begin{itemize}\setlength\itemsep{4pt}
+        \item \stable\ $\Rightarrow$ sistema converge al equilibrio
+        \item \oscil\ $\Rightarrow$ ciclo permanente con déficit de $R$
+        \item \throttle\ $\Rightarrow$ $T^* \gg \tcrit$, cortes máximos
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── 6. MÉTODOS NUMÉRICOS ────────────────────────────────────
+\begin{frame}{Métodos Numéricos e Implementación}
+  \begin{columns}[t]
+    \begin{column}{0.48\textwidth}
+      \textcolor{accent}{\small\textbf{Euler explícito}} \textcolor{muted}{\scriptsize $O(h)$}
+      \begin{equation*}
+        \mathbf{x}_{n+1} = \mathbf{x}_n + h\,\mathbf{f}(\mathbf{x}_n)
+      \end{equation*}
+
+      \textcolor{accent}{\small\textbf{Euler Mejorado (Heun)}} \textcolor{muted}{\scriptsize $O(h^2)$}
+      \begin{gather*}
+        \mathbf{x}^* = \mathbf{x}_n + h\,\mathbf{f}(\mathbf{x}_n)\\
+        \mathbf{x}_{n+1} = \mathbf{x}_n + \tfrac{h}{2}
+          \bigl(\mathbf{f}(\mathbf{x}_n)+\mathbf{f}(\mathbf{x}^*)\bigr)
+      \end{gather*}
+
+      \textcolor{accent}{\small\textbf{RK4}} \textcolor{muted}{\scriptsize $O(h^4)$}
+      \begin{equation*}
+        \mathbf{x}_{n+1} = \mathbf{x}_n
+          + \tfrac{h}{6}(\mathbf{k}_1 + 2\mathbf{k}_2 + 2\mathbf{k}_3 + \mathbf{k}_4)
+      \end{equation*}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \textcolor{accent}{\small\textbf{Condición de frontera}}\\
+      \scriptsize $P(t)$ no puede ser negativa físicamente:
+      \begin{equation*}
+        P_{n+1} \leftarrow \max(P_{\min},\; P_{n+1}),
+        \quad P_{\min}=10\,\text{W}
+      \end{equation*}
+      \vspace{6pt}
+      \textcolor{accent}{\small\textbf{Herramientas}}\\
+      \scriptsize Python 3 · NumPy · SciPy (RK45 referencia) ·
+      Matplotlib · p5.js (animaciones)\\[6pt]
+
+      \textcolor{accent}{\small\textbf{Validación}}\\
+      \scriptsize Comparación contra \texttt{scipy.integrate.solve\_ivp}
+      (RK45, $\Delta t_{\max}=0.01$\,s) mediante error relativo máximo:
+      \begin{equation*}
+        E_{\text{rel}}(h) = \max_{t_i}
+        \frac{\|\mathbf{x}_{\text{aprox}}(t_i) - \mathbf{x}_{\text{ref}}(t_i)\|}
+             {\|\mathbf{x}_{\text{ref}}(t_i)\|}
+      \end{equation*}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── 7. ANÁLISIS DE ERROR ────────────────────────────────────
+\begin{frame}{Análisis de Error}
+  \begin{columns}[c]
+    \begin{column}{0.46\textwidth}
+      \small
+      \begin{tabular}{@{}crrr@{}}
+        \toprule
+        \textcolor{accent}{$h$ (s)} & \textcolor{accent}{Euler}
+          & \textcolor{accent}{Euler Mej.} & \textcolor{accent}{RK4} \\
+        \midrule
+        1.00 & \textcolor{bad}{21.86} & 7.19  & \textbf{4.76} \\
+        0.50 & \textcolor{bad}{9.96}  & 5.11  & \textbf{4.98} \\
+        0.10 & 5.95                   & 5.29  & \textbf{5.29} \\
+        0.05 & 5.60                   & 5.29  & \textbf{5.29} \\
+        0.01 & 5.37                   & 5.31  & \textbf{5.31} \\
+        \bottomrule
+      \end{tabular}\\[4pt]
+      \scriptsize $E_\text{rel}$ ×\,magnitud de estado.
+      Errores absolutos pequeños en proporción.
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \small\textbf{Conclusiones clave:}
+      \begin{itemize}\setlength\itemsep{4pt}
+        \item \textbf{Euler} con $h=1.0$\,s genera $P=542.9$\,W
+              (inestabilidad en transitorio)
+        \item \textbf{Euler Mejorado} converge con $h=0.5$\,s;
+              error residual en $P$: 0.0001\,W
+        \item \textbf{RK4} alcanza equilibrio correcto incluso con
+              $h=1.0$\,s; elimina el error de 2.49\,W de Euler
+        \item La sigmoide introduce cambio brusco en $\dot{P}$
+              cerca de $\tcrit$ que Euler no capta con pasos pequeños
+        \item RK4 = mejor costo/precisión para este sistema
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── 8. RESULTADOS: TABLA DE CASOS ───────────────────────────
+\begin{frame}{Resultados: 10 Casos de Simulación}
+  \scriptsize
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{@{}clccccc@{}}
+    \toprule
+    \textcolor{accent}{\#} & \textcolor{accent}{Descripción}
+      & \textcolor{accent}{$\robj$}
+      & \textcolor{accent}{$T^*_{\text{teór.}}$}
+      & \textcolor{accent}{$T_{\text{sim}}$}
+      & \textcolor{accent}{$R_{\text{sim}}$}
+      & \textcolor{accent}{Régimen} \\
+    \midrule
+    1 & Base estable          & 1000 & 79.5°C  & 79.5°C  & 1000.0 & \stable \\
+    2 & Alta carga            & 1500 & 106.8°C & 106.3°C & 1492.5 & \oscil \\
+    3 & Undervolting ($\alpha{\times}0.25$) & 1000 & 79.5°C & 79.5°C  & 999.8  & \stable \\
+    4 & Overshoot ($\alpha{\times}2$)       & 1000 & 79.5°C & 79.5°C  & 1000.0 & \stable \\
+    5 & Mejor disipación ($k_2{\times}2$)   & 1000 & 52.3°C & 52.3°C  & 1000.0 & \stable \\
+    6 & Mala disipación ($k_2{\times}0.4$)  & 1000 & 161.3°C & 160.2°C & 992.5 & \throttle \\
+    7 & CPU eficiente ($\gamma{\times}2$)   & 1000 & 52.3°C & 52.3°C  & 1000.0 & \stable \\
+    8 & CPU ineficiente ($\gamma{\times}0.5$)& 1000& 134.0°C & 133.2°C& 992.5  & \throttle \\
+    9 & Throttling suave      & 1300 & 95.9°C  & 95.7°C  & 1297.6 & \oscil \\
+    10& Throttling agresivo   & 1300 & 95.9°C  & 95.0°C  & 1284.4 & \oscil \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+% ── 9. ANÁLISIS DE RESULTADOS ───────────────────────────────
+\begin{frame}{Análisis y Simulación}
+  \begin{columns}[t]
+    \begin{column}{0.33\textwidth}
+      \textcolor{good}{\small\textbf{Régimen Estable}}\\
+      \scriptsize (Casos 1, 3, 4, 5, 7)\\[4pt]
+      \small
+      \begin{itemize}\setlength\itemsep{3pt}
+        \item $T^* < \tcrit$ en todos
+        \item Error $<0.02$\,GFLOPS
+        \item $\alpha$ controla dinámica, no equilibrio
+        \item $k_2 {\times}2$: $T^*$ de 79.5°C a 52.3°C ($-$34\%) sin pérdida de $R$
+        \item $\gamma {\times}2$: misma $R$ con la mitad de potencia
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \textcolor{bad}{\small\textbf{Régimen Oscilatorio}}\\
+      \scriptsize (Casos 2, 9, 10)\\[4pt]
+      \small
+      \begin{itemize}\setlength\itemsep{3pt}
+        \item $T^*$ supera levemente $\tcrit$
+        \item Déficit de $R$ proporcional a violación térmica
+        \item Firmware agresivo (caso 10): protege $T$ a costa de inestabilidad en $R$
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \textcolor{warn}{\small\textbf{Throttling Profundo}}\\
+      \scriptsize (Casos 6, 8)\\[4pt]
+      \small
+      \begin{itemize}\setlength\itemsep{3pt}
+        \item $T^* \gg \tcrit$
+        \item Caso 6 ($k_2{\times}0.4$): disipador deficiente, 161.3°C
+        \item Caso 8 ($\gamma{\times}0.5$): hardware antiguo, 208.9\,W
+        \item Cortes máximos persistentes, operación al límite físico
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vspace{8pt}
+  \begin{columns}[c]
+    \begin{column}{\textwidth}
+      \small\textbf{Animaciones (p5.js):}\hspace{6pt}
+      \scriptsize
+      \href{https://editor.p5js.org/Alex-sklx0/sketches/7KqpJfRie}{Evolución temporal} \
+      $\cdot$\ \href{https://editor.p5js.org/Alex-sklx0/sketches/fQWku9xab}{Activación de throttling} \
+      $\cdot$\ \href{https://editor.p5js.org/Alex-sklx0/sketches/g4Q6W-0_4}{Estable vs oscilatorio}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── 10. CONCLUSIONES ────────────────────────────────────────
+\begin{frame}{Conclusiones y Aprendizajes}
+  \begin{columns}[t]
+    \begin{column}{0.5\textwidth}
+      \textcolor{accent}{\small\textbf{Resultados clave}}
+      \begin{itemize}\setlength\itemsep{4pt}
+        \item La condición de viabilidad térmica predice el régimen
+              \emph{antes} de integrar una sola ecuación
+        \item Mejorar $k_2$ (disipador) reduce $T^*$ en 34\% sin costo en $R^*$
+        \item El throttling no es el problema, sino la consecuencia
+              de un sistema mal dimensionado
+        \item RK4 es la elección correcta: $O(h^4)$, estable con $h=1$\,s
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textcolor{accent}{\small\textbf{Aprendizajes del equipo}}
+      \begin{itemize}\setlength\itemsep{4pt}
+        \item Calibración dimensional iterativa entre unidades de
+              hardware y EDOs fue el mayor reto técnico
+        \item Aplicar frontera en $\mathbf{k}_i$ de RK4 introduce
+              discontinuidad: decisión consciente necesaria
+        \item Sincronizar reintegración en tiempo real con p5.js
+              requirió optimizar el bucle numérico
+        \item El análisis analítico de equilibrio es más poderoso
+              que la simulación bruta
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vspace{8pt}
+  \scriptsize\textcolor{muted}{%
+    Repositorio: \href{https://github.com/Alex-sklx0/Modelo-Dinamico-de-Estabilidad-Termica-y-Rendimiento-en-Computadores-de-Proposito-General}%
+    {github.com/Alex-sklx0/Modelo-Dinamico...}}
+\end{frame}
+
+% ── CIERRE ──────────────────────────────────────────────────
+{
+\setbeamertemplate{footline}{}
+\begin{frame}[plain]
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[primary, opacity=0.5]
+      (current page.north east) rectangle
+      ([xshift=-3.2cm]current page.south east);
+    \fill[secondary, opacity=0.2]
+      ([xshift=-1.6cm, yshift=0.6cm]current page.east) circle (2.8cm);
+  \end{tikzpicture}
+
+  \vspace{2.2cm}
+  \hspace{0.7cm}%
+  \begin{minipage}{0.6\textwidth}
+    \textcolor{accent}{\rule{40pt}{2pt}}\\[8pt]
+    {\fontsize{22}{26}\bfseries\color{white} ¡Gracias!}\\[10pt]
+  \end{minipage}
+\end{frame}
+}
+
+\end{document}

@@ -9,6 +9,7 @@ con análisis de error, 4 escenarios de intervención y visualización.
 |---|---|
 | `thermal_throttling_core.py` | Clase `ThermalModel`: sistema de EDOs, métodos numéricos, análisis de error, escenarios |
 | `main.tex` | Versión LaTeX del informe (artículo 2 columnas) |
+| `presentacion.tex` | Versión LaTeX de la presentación |
 
 ## Uso
 

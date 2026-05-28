@@ -50,9 +50,9 @@
 % ─── Responsabilidades ────────────────────────────────────────────────────────
 \noindent\textbf{Responsabilidades:}
 \begin{itemize}\setlength\itemsep{0pt}
-  \item \textbf{David Salazar} --- Modelado matemático y derivación de constantes
-  \item \textbf{Julian Ramírez} --- Implementación numérica (Euler, Euler Mejorado, RK4) y análisis de error
-  \item \textbf{Juan Gaviria} --- Simulación de casos, animaciones y visualización
+  \item \textbf{David Salazar} Modelado matemático y derivación de constantes
+  \item \textbf{Julian Ramírez} Implementación numérica (Euler, Euler Mejorado, RK4) y análisis de error
+  \item \textbf{Juan Gaviria} Simulación de casos, animaciones y visualización
 \end{itemize}
 
 % ─── Resumen ──────────────────────────────────────────────────────────────────
@@ -128,6 +128,8 @@ El término $\alpha(R_\text{obj}-R)$ es la demanda del SO (controlador
 proporcional~\cite{ogata}): $\alpha$ alto corresponde al perfil
 ``Máximo rendimiento''. ~\cite{brooks,nocedal}
 
+El término \(-\frac{\beta}{1+e^{-k(T-T_{\text{crit}})}}\) modela el \textbf{throttling del firmware} mediante una función sigmoide que recorta la potencia conforme la temperatura (\(T\)) se acerca al umbral crítico (\(T_{\text{crit}}\)). La constante \(\beta\) acota el recorte máximo de energía en vatios \([W]\), y el parámetro \(k_{sig}\) define qué tan abrupta es la caída del rendimiento.
+
 \subsection{Constantes del modelo}
 
 Cada constante se deriva como el producto de una magnitud de hardware
@@ -144,9 +146,9 @@ Constante & Expresión & Valor \\
 \midrule
 $k_1$ & $ck1 \cdot f_p \cdot N_c$               & $0.0518$~°C\,s$^{-1}$W$^{-1}$ \\
 $k_2$ & $ck2\cdot \Phi_{\text{aire}} \cdot H_d$  & $0.1001$~s$^{-1}$ \\
-$\gamma$ & $cγ \cdot N_h \cdot f_p$              & $0.9979$~GFLOPS\,s$^{-2}$W$^{-1}$ \\
-$\delta$ & $cδ \,/\,\min(v_\text{ram},v_\text{bus}{\times}10^3)$ & $0.105$~s$^{-1}$ \\
-$\alpha$ & $cα \cdot N_h/N_c$                      & $1.6$ \\
+$\gamma$ & $c\gamma \cdot N_h \cdot f_p$              & $0.9979$~GFLOPS\,s$^{-2}$W$^{-1}$ \\
+$\delta$ & $c\delta \,/\,\min(v_\text{ram},v_\text{bus}{\times}10^3)$ & $0.105$~s$^{-1}$ \\
+$\alpha$ & $c\alpha \cdot N_h/N_c$                      & $1.6$ \\
 $\beta$  & calibración directa                     & $12.0$~W \\
 $k_{\text{sig}}$ & calibración directa             & $0.5$~°C$^{-1}$ \\
 \bottomrule
@@ -159,7 +161,7 @@ $\Phi_\text{aire}=45.0$\,CFM, $H_d=0.004$\,W/°C.
 
 Cada factor de ajuste convierte las unidades del hardware (GHz, CFM, MT/s)
 a las unidades que requieren las EDOs. Sus valores se fijaron por análisis
-dimensional y calibración sobre el caso base ($T^* = 79.5$\,°C, $P^* = 105.2$\,W, $R^* = 1000 GFLOPS$\):
+dimensional y calibración sobre el caso base ($T^* = 79.5$\,°C, $P^* = 105.2$\,W, $R^* = 1000 GFLOPS$):
 
 \begin{itemize}\setlength\itemsep{1pt}
   \item $c_{k_1}=0.0024$~[°C\,/(GHz$\cdot$núcleo$\cdot$W$\cdot$s)]: convierte
@@ -209,6 +211,67 @@ Igualando las tres derivadas a cero con throttling despreciable
 \end{equation}
 
 
+\subsubsection*{Derivación de la condición de viabilidad térmica}
+
+La condición de viabilidad surge directamente de exigir que el equilibrio
+teórico $T^*$ sea físicamente alcanzable, es decir, que no supere el
+umbral a partir del cual el firmware nunca deja de actuar:
+
+\begin{equation}
+  T^* < T_{\text{crit}}
+  \label{eq:viabilidad_req}
+\end{equation}
+
+Sustituyendo la expresión de $T^*$ obtenida al igualar $\dot{T}=0$:
+
+\[
+  T_{\text{amb}} + \frac{k_1\,\delta\, R_{\text{obj}}}{k_2\,\gamma}
+  < T_{\text{crit}}
+\]
+
+Restando $T_\text{amb}$ en ambos lados y dividiendo entre $R_\text{obj}$:
+
+\begin{equation}
+  \boxed{
+    \frac{k_1\,\delta}{k_2\,\gamma}
+    < \frac{T_{\text{crit}} - T_{\text{amb}}}{R_{\text{obj}}}
+  }
+  \label{eq:viabilidad}
+\end{equation}
+
+El lado izquierdo agrupa los parámetros de \textbf{generación de calor}
+($k_1$, $\delta$) frente a los de \textbf{disipación y eficiencia}
+($k_2$, $\gamma$): a mayor resultado de la división más temperatura genera el
+sistema por unidad de throughput. El lado derecho es el \textbf{margen
+térmico disponible} por unidad de rendimiento: cuántos grados
+separan el ambiente del límite crítico por cada GFLOPS exigido.
+
+Cuando la desigualdad se cumple, $T^*$ es un punto fijo físicamente
+alcanzable y el sistema puede converger a él. Cuando se viola la sigmoide nunca se desactiva y el
+sistema entra en régimen oscilatorio.
+
+\subsubsection*{Verificación numérica}
+
+Con los parámetros del caso base se evalúa cada lado de~(\ref{eq:viabilidad}):
+
+\[
+  \frac{k_1\,\delta}{k_2\,\gamma}
+  = \frac{0.0518 \times 0.105}{0.1001 \times 0.9979}
+  = \frac{0.005439}{0.09990}
+  = 0.0545
+\]
+
+\[
+  \frac{T_{\text{crit}} - T_{\text{amb}}}{R_{\text{obj}}}
+  = \frac{90 - 25}{1000}
+  = \frac{65}{1000}
+  = 0.0650
+\]
+
+\[
+  0.0545 < 0.0650 \;\checkmark
+\]
+
 \noindent\textbf{Estabilidad.}
 Si la temperatura sube ligeramente por encima de $T^*$, el sistema se enfría
 solo, sin necesitar intervención externa. Si el throughput cae
@@ -228,10 +291,6 @@ con un déficit de rendimiento proporcional a cuánto se viola la condición.
 \label{sec:numerica}
 
 \subsection{Implementación de los tres métodos}
-
-El sistema $\dot{\mathbf{x}} = \mathbf{f}(\mathbf{x})$,
-$\mathbf{x}=(T,R,P)^\top$, se resuelve con tres métodos programados
-desde cero sobre la misma interfaz $\mathbf{f}$.
 
 \medskip\noindent\textbf{Euler explícito:}
 $\mathbf{x}_{n+1} = \mathbf{x}_n + h\,\mathbf{f}(\mathbf{x}_n)$
